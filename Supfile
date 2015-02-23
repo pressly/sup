@@ -1,0 +1,62 @@
+# Hubserver
+---
+name: hubserver
+image: pressly/hubserver
+registry: ubuntu@registry.x.pressly.io
+
+config: /data/etc/hubserver.conf
+port: 80:3000
+
+#env:
+#  name: hubserver
+#  image: pressly/hubserver
+#  registry: x
+#  config: y
+#  port: 80:3000
+
+hosts:
+  development:
+    - ubuntu@betabox.x.pressly.io
+  beta:
+    - betabox.x.pressly.io:22
+  production:
+    - ubuntu@betabox.x.pressly.io
+
+links: # dependencies .. backends .. links .. services ..?
+  - mongodb # hmm.. host is defined on mongodb ..?
+  - ledisdb
+
+packs:
+  - ./scripts/docker
+  - global-thing
+  - etc
+
+commands:
+  ping:
+    desc: Print OS name
+    exec: uname -a
+
+  ps:
+    desc: Container list
+    exec: sudo docker ps
+
+  # hmm.. does yaml parser give us comments too..?
+  # then we could use that for the desc instead..
+  provision:
+    desc: Provision the container host OS
+    script: ./scripts/docker/provision.sh
+
+  start:
+    desc: Start container
+    script: ./scripts/docker/docker.sh $IMAGE start
+
+  hello:
+    desc: say something..
+    exec: echo 'hello dude.. sup?'
+
+  start:
+    sudo docker start $IMAGE
+
+  run:
+    sudo docker run --name $NAME -d -p $PORT \
+      -v $CONFIG:/etc/hubserver.conf $IMAGE
