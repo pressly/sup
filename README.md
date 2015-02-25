@@ -3,34 +3,33 @@ Stack Up
 
 # or just stackup/cmd/sup   ...?
 
-or `sup` for short.
+or `sup`/`stack`/`st` for short.
 
 # Stackfile
 
 ...... what language bindings to execute stuff...?
 .. mimic the shell.. whatever shell can do, this thing should be able to do..
 
+# Supfile
+
+See [example Supfile](./Supfile).
+
 # Usage
 
-$ sup deploy
-$ sup deploy --service=hubserver
+    $ sup <hosts> <command> [<args>..]
 
-$ sup stop --service=hubserver
-$ sup stop -s=hubserver
+    $ sup prod deploy
+    $ sup prod deploy --service=hubserver
 
-$ sup service:deploy
+    $ sup stg stop --service=hubserver
+    $ sup stg stop -s=hubserver
 
-$ sup app:deploy
-$ sup app:stop
-$ sup app:restart
-$ sup app:build
+    $ sup service build
+    $ sup service deploy -s=hubserver # .. does it all......
 
-$ sup service:build
-$ sup service:deploy -s=hubserver # .. does it all......
+    $ sup host top
+    $ sup health
+    $ sup stats
 
-$ sup top
-$ sup health
-$ sup stats
-
-$ sup exec ls -la
+    $ sup exec ls -la
 

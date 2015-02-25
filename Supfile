@@ -1,35 +1,28 @@
 # Hubserver
 ---
-name: hubserver
-image: pressly/hubserver
-registry: ubuntu@registry.x.pressly.io
-
-config: /data/etc/hubserver.conf
-port: 80:3000
-
-#env:
-#  name: hubserver
-#  image: pressly/hubserver
-#  registry: x
-#  config: y
-#  port: 80:3000
 
 hosts:
-  development:
+  local: # For testing purposes only
+    - localhost
+    - localhost
+    - localhost
+    - localhost
+    - localhost
+  dev:
     - ubuntu@betabox.x.pressly.io
   beta:
     - betabox.x.pressly.io:22
-  production:
+  prod:
     - ubuntu@betabox.x.pressly.io
 
-links: # dependencies .. backends .. links .. services ..?
-  - mongodb # hmm.. host is defined on mongodb ..?
-  - ledisdb
-
-packs:
-  - ./scripts/docker
-  - global-thing
-  - etc
+env:
+  NAME: hubserver
+  IMAGE: pressly/hubserver
+  REGISTRY: registry.x.pressly.io
+  CONFIG: /data/etc/hubserver.conf
+  HOST_PORT: 80
+  CONTAINER_PORT: 3000
+  USER: $USER
 
 commands:
   ping:
@@ -51,12 +44,12 @@ commands:
     script: ./scripts/docker/docker.sh $IMAGE start
 
   hello:
-    desc: say something..
+    desc: Say something..
     exec: echo 'hello dude.. sup?'
 
   start:
-    sudo docker start $IMAGE
+    exec: sudo docker start $IMAGE
 
   run:
-    sudo docker run --name $NAME -d -p $PORT \
-      -v $CONFIG:/etc/hubserver.conf $IMAGE
+    exec: sudo docker run --name $NAME -d -p $PORT \
+          -v $CONFIG:/etc/hubserver.conf $IMAGE
