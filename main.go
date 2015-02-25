@@ -7,8 +7,19 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+type Config struct {
+	Hosts    map[string][]string `yaml:"hosts"`
+	Env      map[string]string   `yaml:"env"`
+	Commands map[interface{}]struct {
+		Desc    string   `yaml:"desc"`
+		Exec    string   `yaml:"exec`
+		Script  string   `yaml:"script"`
+		Targets []string `yaml:"targets"`
+	} `yaml:"commands"`
+}
+
 var (
-	conf map[string]interface{}
+	conf Config
 )
 
 func main() {
@@ -17,15 +28,31 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	log.Println(conf)
 
-	commands := conf["commands"].(map[interface{}]interface{})
+	// log.Printf("Hosts:\n")
+	// for group, hosts := range conf.Hosts {
+	// 	log.Printf("- %v\n", group)
+	// 	for _, host := range hosts {
+	// 		log.Printf("   - %v\n", host)
+	// 	}
+	// }
 
-	hosts := conf["hosts"].(map[interface{}]interface{})
-	betaHosts := hosts["beta"].([]interface{})
-	betaHost := betaHosts[0].(string)
+	// log.Printf("Env:\n")
+	// for name, value := range conf.Env {
+	// 	log.Printf("- %v=\"%v\"\n", name, value)
+	// }
 
-	log.Println(betaHost)
+	// log.Printf("Commands:\n")
+	// for alias, cmd := range conf.Commands {
+	// 	log.Printf("- %v\n", alias)
+	// 	log.Printf("  - Desc: %v\n", cmd.Desc)
+	// 	log.Printf("  - Exec: %v\n", cmd.Exec)
+	// 	log.Printf("  - Script: %v\n", cmd.Script)
+	// 	log.Printf("  - Targets:\n")
+	// 	for _, target := range cmd.Targets {
+	// 		log.Printf("    - %v\n", target)
+	// 	}
+	// }
 
 	s := &SSHClient{}
 	err = s.Connect(betaHost)
