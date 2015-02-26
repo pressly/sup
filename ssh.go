@@ -6,7 +6,6 @@ import (
 	"io"
 	"log"
 	"net"
-	"net/url"
 	"os"
 	"strings"
 
@@ -31,44 +30,55 @@ type Command struct {
 }
 
 type ErrConnect struct {
+	User   string
 	Host   string
 	Reason string
 }
 
 func (e ErrConnect) Error() string {
-	return fmt.Sprintf(`Connect("%v"): %v`, e.Host, e.Reason)
+	return fmt.Sprintf(`Connect("%v@%v"): %v`, e.User, e.Host, e.Reason)
+}
+
+func (c *SSHClient) parseHost(host string) error {
+	c.Host = host
+
+	// Remove extra "ssh://" schema
+	if c.Host[:6] == "ssh://" {
+		c.Host = c.Host[6:]
+	}
+
+	if at := strings.Index(c.Host, "@"); at != -1 {
+		c.User = c.Host[:at]
+		c.Host = c.Host[at+1:]
+		log.Printf("User from: %v", c.Host)
+		log.Printf("User to: %v @ %v", c.User, c.Host)
+	}
+
+	// Add default user, if not set
+	if c.User == "" {
+		c.User = os.Getenv("USER")
+		log.Printf("User OS: %v", c.User)
+	}
+
+	if strings.Index(c.Host, "/") != -1 {
+		return ErrConnect{c.User, c.Host, "unexpected slash in the host URL"}
+	}
+
+	// Add default port, if not set
+	if strings.Index(c.Host, ":") == -1 {
+		c.Host += ":22"
+	}
+
+	log.Printf("parsed: <%v>@<%v>", c.User, c.Host)
+
+	return nil
 }
 
 // Connect connects SSH client to a specified host.
 // Expects host in the format "[ssh://]host[:port]", returns error otherwise.
 func (c *SSHClient) Connect(host string) error {
-	u, err := url.Parse(host)
-	if err != nil {
-		return ErrConnect{host, err.Error()}
-	}
-
-	// net/url parses "example.com" or "localhost" as relative Path instead of Host.
-	// If there's no slash in the Path, we're good to swap Host and Path.
-	if u.Host == "" && strings.Index(u.Path, "/") == -1 {
-		u.Host, u.Path = u.Path, u.Host
-	}
-	// Error out on unexpected path
-	if u.Path != "" {
-		return ErrConnect{host, fmt.Sprintf(`Expected empty path, got "%v"`, u.Path)}
-	}
-	// Add default port, if not set
-	if strings.Index(u.Host, ":") == -1 {
-		u.Host = u.Host + ":22"
-	}
-	// Error out on unknown scheme
-	if u.Scheme != "" && u.Scheme != "ssh" {
-		return ErrConnect{host, fmt.Sprintf(`Expected "ssh://" (or empty) scheme, got "%v"`, u.Scheme)}
-	}
-	// Add default user, if not set
-	if u.User != nil && u.User.String() != "" {
-		c.User = u.User.String()
-	} else {
-		c.User = os.Getenv("USER")
+	if err := c.parseHost(host); err != nil {
+		return err
 	}
 
 	// TODO: add the keys from ~/ssh/config ..
@@ -94,14 +104,14 @@ func (c *SSHClient) Connect(host string) error {
 		},
 	}
 
-	conn, err := ssh.Dial("tcp", u.Host, config)
+	conn, err := ssh.Dial("tcp", c.Host, config)
 	if err != nil {
-		return ErrConnect{host, err.Error()}
+		return ErrConnect{c.User, c.Host, err.Error()}
 	}
 
 	sess, err := conn.NewSession()
 	if err != nil {
-		return ErrConnect{host, err.Error()}
+		return ErrConnect{c.User, c.Host, err.Error()}
 	}
 	c.Session = sess
 
@@ -126,7 +136,7 @@ func (c *SSHClient) Connect(host string) error {
 	// err = sess.Start("HI=123 ls -la ; echo $X ; echo sup ; HI=wooooo echo $HI")
 	err = sess.Start("ls -la")
 	if err != nil {
-		return ErrConnect{host, err.Error()}
+		return ErrConnect{c.User, c.Host, err.Error()}
 	}
 
 	log.Println(b.String())
