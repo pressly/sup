@@ -1,6 +1,7 @@
 package main
 
 import (
+	"io"
 	"io/ioutil"
 	"log"
 	"os"
@@ -59,22 +60,43 @@ func main() {
 	if !ok {
 		usage(&conf)
 	}
+
+	// TODO: Targets?
+
 	command, ok := conf.Commands[os.Args[2]]
 	if !ok {
 		usage(&conf)
 	}
 
-	log.Printf("%v, %v\n", hosts, command)
-
 	clients := make([]*SSHClient, len(hosts))
 	for i, host := range hosts {
-		client := &SSHClient{
+		c := &SSHClient{
 			Env: map[string]string{"FOO": "sup"},
 		}
-		if err := client.Connect(host); err != nil {
+		if err := c.Connect(host); err != nil {
 			log.Fatal(err)
 		}
-		clients[i] = client
+
+		defer c.Close()
+		clients[i] = c
+	}
+
+	for _, c := range clients {
+		c.Run(command)
+
+		go func(c *SSHClient) {
+			if _, err := io.Copy(os.Stdout, c.RemoteStdout); err != nil {
+				log.Printf("STDOUT(%v): %v", c.Host, err)
+			}
+			if _, err := io.Copy(os.Stderr, c.RemoteStderr); err != nil {
+				log.Printf("STERR(%v): %v", c.Host, err)
+			}
+		}(c)
+
+	}
+
+	for _, c := range clients {
+		c.Wait()
 	}
 
 	// 1. Parse the command that we're going to run..

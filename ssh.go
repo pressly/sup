@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"fmt"
 	"io"
 	"log"
@@ -14,19 +13,17 @@ import (
 )
 
 type SSHClient struct { // SSHSession ...?
-	User       string
-	Host       string
-	Agent      net.Conn
-	Conn       *ssh.Client
-	Session    *ssh.Session // embed this....?
-	StdinPipe  io.WriteCloser
-	StdoutPipe io.Reader
-	Env        map[string]string
-}
-
-type Command struct {
-	Input  string
-	Output io.Reader
+	User         string
+	Host         string
+	Agent        net.Conn
+	Conn         *ssh.Client
+	Sess         *ssh.Session // embed this....?
+	RemoteStdin  io.WriteCloser
+	RemoteStdout io.Reader
+	RemoteStderr io.Reader
+	Env          map[string]string
+	Opened       bool
+	Started      bool
 }
 
 type ErrConnect struct {
@@ -39,6 +36,16 @@ func (e ErrConnect) Error() string {
 	return fmt.Sprintf(`Connect("%v@%v"): %v`, e.User, e.Host, e.Reason)
 }
 
+type ErrCmd struct {
+	Cmd    Command
+	Reason string
+}
+
+func (e ErrCmd) Error() string {
+	return fmt.Sprintf(`Run("%v"): %v`, e.Cmd, e.Reason)
+}
+
+// parseHost parses and normalizes <user>@<host:port> from a given string.
 func (c *SSHClient) parseHost(host string) error {
 	c.Host = host
 
@@ -50,14 +57,11 @@ func (c *SSHClient) parseHost(host string) error {
 	if at := strings.Index(c.Host, "@"); at != -1 {
 		c.User = c.Host[:at]
 		c.Host = c.Host[at+1:]
-		log.Printf("User from: %v", c.Host)
-		log.Printf("User to: %v @ %v", c.User, c.Host)
 	}
 
 	// Add default user, if not set
 	if c.User == "" {
 		c.User = os.Getenv("USER")
-		log.Printf("User OS: %v", c.User)
 	}
 
 	if strings.Index(c.Host, "/") != -1 {
@@ -68,8 +72,6 @@ func (c *SSHClient) parseHost(host string) error {
 	if strings.Index(c.Host, ":") == -1 {
 		c.Host += ":22"
 	}
-
-	log.Printf("parsed: <%v>@<%v>", c.User, c.Host)
 
 	return nil
 }
@@ -92,7 +94,6 @@ func (c *SSHClient) Connect(host string) error {
 		agent := agent.NewClient(sock)
 		agentSigners, err := agent.Signers()
 		if err == nil && len(agentSigners) > 0 {
-			log.Println("PublicKey:", agentSigners[0].PublicKey())
 			signers = append(signers, agentSigners...)
 		}
 	}
@@ -104,56 +105,103 @@ func (c *SSHClient) Connect(host string) error {
 		},
 	}
 
-	conn, err := ssh.Dial("tcp", c.Host, config)
+	c.Conn, err = ssh.Dial("tcp", c.Host, config)
 	if err != nil {
 		return ErrConnect{c.User, c.Host, err.Error()}
 	}
 
-	sess, err := conn.NewSession()
+	return nil
+}
+
+func (c *SSHClient) reconnect() error {
+
+	//TODO: Check for old sessions, error out if not closed?
+
+	sess, err := c.Conn.NewSession()
 	if err != nil {
+		return err
+	}
+
+	c.RemoteStdout, err = sess.StdoutPipe()
+	if err != nil {
+		return err
+	}
+	c.RemoteStderr, err = sess.StderrPipe()
+	if err != nil {
+		return err
+	}
+	c.RemoteStdin, err = sess.StdinPipe()
+	if err != nil {
+		return err
+	}
+
+	c.Sess = sess
+	c.Opened = true
+	return nil
+}
+
+func (c *SSHClient) Run(cmd Command) error {
+	// Reconnect session
+	if err := c.reconnect(); err != nil {
 		return ErrConnect{c.User, c.Host, err.Error()}
 	}
-	c.Session = sess
 
-	// TODO: test env variables this way....
-	// probably wont work... so we need a pty
-
+	// // =========== TODO: RequestPTY?
 	// modes := ssh.TerminalModes{
-	// 	ssh.ECHO:          0,     // disable echoing
+	// 	//ssh.ECHO:          1,     // disable echoing
 	// 	ssh.TTY_OP_ISPEED: 14400, // input speed = 14.4kbaud
 	// 	ssh.TTY_OP_OSPEED: 14400, // output speed = 14.4kbaud
 	// }
 	// // Request pseudo terminal
 	// if err := sess.RequestPty("xterm", 80, 40, modes); err != nil {
-	// 	log.Fatalf("request for pseudo terminal failed: %s", err)
+	// 	conn.Close()
+	// 	return ErrConnect{host, fmt.Sprintf("request for pseudo terminal failed: %s", err)}
 	// }
 
-	// sess.Setenv("HI", "SUP")
-
-	var b bytes.Buffer
-	sess.Stdout = &b
-	sess.Stderr = &b
+	// =========== TODO: ENV
 	// err = sess.Start("HI=123 ls -la ; echo $X ; echo sup ; HI=wooooo echo $HI")
-	err = sess.Start("ls -la")
-	if err != nil {
-		return ErrConnect{c.User, c.Host, err.Error()}
+	//err = sess.Start("echo $FOO")
+
+	// for name, value := range c.Env {
+	// 	if err := sess.Setenv(name, value); err != nil {
+	// 		return ErrConnect{host, fmt.Sprintf(`Setenv("%v", "%v"): %v`, name, value, err.Error())}
+	// 	}
+	// }
+
+	if err := c.Sess.Start(cmd.Exec); err != nil {
+		return ErrCmd{cmd, err.Error()}
 	}
+	c.Started = true
 
-	log.Println(b.String())
-
-	sess.Wait()
+	// if err := sess.Shell(); err != nil {
+	// 	return ErrConnect{host, err.Error()}
+	// }
 
 	return nil
 }
 
-func (s *SSHClient) Wait() {
-	s.Session.Wait()
+func (c *SSHClient) Wait() {
+	if !c.Started {
+		log.Printf("Trying to run Wait() on stopped SSHClient")
+		return
+	}
+	c.Sess.Wait()
 }
 
-func (s *SSHClient) Read(b []byte) (int, error) {
-	return s.StdoutPipe.Read(b)
+func (c *SSHClient) Close() {
+	if !c.Opened {
+		log.Printf("Trying to run Close() on closed SSHClient")
+		return
+	}
+	c.Conn.Close()
 }
 
-func (s *SSHClient) Write(b []byte) (int, error) {
-	return s.StdinPipe.Write(b)
+func (c *SSHClient) Read(b []byte) (int, error) {
+	log.Printf("Chci cist.... %s", b)
+	return c.RemoteStdout.Read(b)
+}
+
+func (c *SSHClient) Write(b []byte) (int, error) {
+	log.Printf("Chci psat.... %s", b)
+	return c.RemoteStdin.Write(b)
 }
