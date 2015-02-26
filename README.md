@@ -16,7 +16,7 @@ See [example Supfile](./Supfile).
 
 # Usage
 
-    $ sup <hosts> <command> [<args>..]
+    $ sup <host-group> <command-alias>
 
     $ sup prod deploy
     $ sup prod deploy --service=hubserver
