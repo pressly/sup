@@ -8,17 +8,19 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+type Command struct {
+	Desc   string `yaml:"desc"`
+	Exec   string `yaml:"exec`
+	Script string `yaml:"script"`
+}
+
 // Config represents the configuration data that are
 // loaded from the Supfile YAML file.
 type Config struct {
 	Hosts    map[string][]string `yaml:"hosts"`
 	Env      map[string]string   `yaml:"env"`
-	Commands map[interface{}]struct {
-		Desc    string   `yaml:"desc"`
-		Exec    string   `yaml:"exec`
-		Script  string   `yaml:"script"`
-		Targets []string `yaml:"targets"`
-	} `yaml:"commands"`
+	Commands map[string]Command  `yaml:"commands"`
+	Targets  map[string][]string `yaml:"targets"`
 }
 
 func usage(conf *Config) {

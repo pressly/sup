@@ -33,23 +33,31 @@ commands:
     desc: Container list
     exec: sudo docker ps
 
+  hello:
+    desc: Say something..
+    exec: echo 'hello dude.. sup?'
+
   # hmm.. does yaml parser give us comments too..?
   # then we could use that for the desc instead..
   provision:
     desc: Provision the container host OS
     script: ./scripts/docker/provision.sh
 
-  start:
-    desc: Start container
-    script: ./scripts/docker/docker.sh $IMAGE start
-
-  hello:
-    desc: Say something..
-    exec: echo 'hello dude.. sup?'
-
-  start:
-    exec: sudo docker start $IMAGE
+  build:
+    desc: Build docker image
+    script: ./scripts/docker/build.sh
 
   run:
+    desc: Run container
     exec: sudo docker run --name $NAME -d -p $PORT \
           -v $CONFIG:/etc/hubserver.conf $IMAGE
+
+targets:
+  test:
+    - ping
+    - ps
+    - hello
+  deploy:
+    - build
+    - provision
+    - run
