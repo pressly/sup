@@ -18,18 +18,12 @@ See [example Supfile](./Supfile).
 
     $ sup <host-group> <command-alias>
 
-    $ sup prod deploy
-    $ sup prod deploy --service=hubserver
+    $ sup dev build
+    $ sup dev deploy
+    $ sup dev health
 
-    $ sup stg stop --service=hubserver
-    $ sup stg stop -s=hubserver
+    $ sup stg exec ls -la
 
-    $ sup service build
-    $ sup service deploy -s=hubserver # .. does it all......
-
-    $ sup host top
-    $ sup health
-    $ sup stats
-
-    $ sup exec ls -la
-
+    $ sup prod top
+    $ sup prod health
+    $ sup prod stats
