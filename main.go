@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"strings"
 
 	"gopkg.in/yaml.v2"
 )
@@ -13,6 +14,7 @@ type Command struct {
 	Desc   string `yaml:"desc"`
 	Exec   string `yaml:"exec`
 	Script string `yaml:"script"`
+	//Env map[string]string `yaml:"env"`
 }
 
 // Config represents the configuration data that are
@@ -46,7 +48,11 @@ func usage(conf *Config) {
 }
 
 func main() {
-	var conf Config
+	var (
+		conf           Config
+		longestHostLen int
+	)
+
 	data, _ := ioutil.ReadFile("./Supfile")
 	if err := yaml.Unmarshal(data, &conf); err != nil {
 		log.Fatal(err)
@@ -57,8 +63,14 @@ func main() {
 	}
 
 	hosts, ok := conf.Hosts[os.Args[1]]
-	if !ok {
+	if !ok || len(hosts) == 0 {
 		usage(&conf)
+	}
+
+	for _, host := range hosts {
+		if len(host) > longestHostLen {
+			longestHostLen = len(host)
+		}
 	}
 
 	// TODO: Targets?
@@ -83,20 +95,33 @@ func main() {
 
 	for _, c := range clients {
 		c.Run(command)
-
+		spaces := strings.Repeat(" ", longestHostLen-len(c.Host))
 		go func(c *SSHClient) {
-			if _, err := io.Copy(os.Stdout, c.RemoteStdout); err != nil {
+			if _, err := io.Copy(os.Stdout, NewPrefixedLineReader(c.RemoteStdout, spaces+c.Host+" | ")); err != nil {
 				log.Printf("STDOUT(%v): %v", c.Host, err)
 			}
-			if _, err := io.Copy(os.Stderr, c.RemoteStderr); err != nil {
+		}(c)
+		go func(c *SSHClient) {
+			if _, err := io.Copy(os.Stderr, NewPrefixedLineReader(c.RemoteStderr, spaces+c.Host+" | ")); err != nil {
 				log.Printf("STERR(%v): %v", c.Host, err)
 			}
 		}(c)
-
 	}
 
 	for _, c := range clients {
 		c.Wait()
+		// TODO: check for exit err:
+		// err = session.Wait()
+		// if err == nil {
+		// 	t.Fatalf("expected command to fail but it didn't")
+		// }
+		// e, ok := err.(*ExitError)
+		// if !ok {
+		// 	t.Fatalf("expected *ExitError but got %T", err)
+		// }
+		// if e.ExitStatus() != 15 {
+		// 	t.Fatalf("expected command to exit with 15 but got %v", e.ExitStatus())
+		// }
 	}
 
 	// 1. Parse the command that we're going to run..
