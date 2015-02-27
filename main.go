@@ -67,12 +67,6 @@ func main() {
 		usage(&conf)
 	}
 
-	for _, host := range hosts {
-		if len(host) > longestHostLen {
-			longestHostLen = len(host)
-		}
-	}
-
 	// TODO: Targets?
 
 	command, ok := conf.Commands[os.Args[2]]
@@ -88,8 +82,12 @@ func main() {
 		if err := c.Connect(host); err != nil {
 			log.Fatal(err)
 		}
-
 		defer c.Close()
+
+		if len(c.Host) > longestHostLen {
+			longestHostLen = len(c.Host)
+		}
+
 		clients[i] = c
 	}
 
