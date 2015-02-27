@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 	"io"
-	"log"
+	"io/ioutil"
 	"net"
 	"os"
 	"strings"
@@ -22,8 +22,9 @@ type SSHClient struct { // SSHSession ...?
 	RemoteStdout io.Reader
 	RemoteStderr io.Reader
 	Env          map[string]string
-	Opened       bool
-	Started      bool
+	ConnOpened   bool
+	SessOpened   bool
+	Running      bool
 }
 
 type ErrConnect struct {
@@ -79,6 +80,10 @@ func (c *SSHClient) parseHost(host string) error {
 // Connect connects SSH client to a specified host.
 // Expects host in the format "[ssh://]host[:port]", returns error otherwise.
 func (c *SSHClient) Connect(host string) error {
+	if c.ConnOpened {
+		return fmt.Errorf("Already connected")
+	}
+
 	if err := c.parseHost(host); err != nil {
 		return err
 	}
@@ -109,13 +114,15 @@ func (c *SSHClient) Connect(host string) error {
 	if err != nil {
 		return ErrConnect{c.User, c.Host, err.Error()}
 	}
+	c.ConnOpened = true
 
 	return nil
 }
 
 func (c *SSHClient) reconnect() error {
-
-	//TODO: Check for old sessions, error out if not closed?
+	if c.SessOpened {
+		return fmt.Errorf("Session already connected")
+	}
 
 	sess, err := c.Conn.NewSession()
 	if err != nil {
@@ -126,21 +133,27 @@ func (c *SSHClient) reconnect() error {
 	if err != nil {
 		return err
 	}
+
 	c.RemoteStderr, err = sess.StderrPipe()
 	if err != nil {
 		return err
 	}
+
 	c.RemoteStdin, err = sess.StdinPipe()
 	if err != nil {
 		return err
 	}
 
 	c.Sess = sess
-	c.Opened = true
+	c.SessOpened = true
 	return nil
 }
 
 func (c *SSHClient) Run(cmd Command) error {
+	if c.Running {
+		return fmt.Errorf("Session already running")
+	}
+
 	// Reconnect session
 	if err := c.reconnect(); err != nil {
 		return ErrConnect{c.User, c.Host, err.Error()}
@@ -168,40 +181,54 @@ func (c *SSHClient) Run(cmd Command) error {
 	// 	}
 	// }
 
-	if err := c.Sess.Start(cmd.Exec); err != nil {
-		return ErrCmd{cmd, err.Error()}
-	}
-	c.Started = true
-
+	// Wanna be interactive? Sure!
 	// if err := sess.Shell(); err != nil {
 	// 	return ErrConnect{host, err.Error()}
 	// }
 
+	if cmd.Exec != "" {
+		if err := c.Sess.Start(cmd.Exec); err != nil {
+			return ErrCmd{cmd, err.Error()}
+		}
+	} else if cmd.Script != "" {
+		f, err := os.Open(cmd.Script)
+		if err != nil {
+			return err
+		}
+		data, err := ioutil.ReadAll(f)
+		if err != nil {
+			return err
+		}
+		if err := c.Sess.Start(string(data)); err != nil {
+			return ErrCmd{cmd, err.Error()}
+		}
+	} else {
+		fmt.Errorf("Nothing to run")
+	}
+
+	c.Running = true
+
 	return nil
 }
 
-func (c *SSHClient) Wait() {
-	if !c.Started {
-		log.Printf("Trying to run Wait() on stopped SSHClient")
-		return
+func (c *SSHClient) Wait() error {
+	if !c.Running {
+		return fmt.Errorf("Trying to wait on stopped session")
 	}
-	c.Sess.Wait()
+	err := c.Sess.Wait()
+	c.Running = false
+	return err
 }
 
-func (c *SSHClient) Close() {
-	if !c.Opened {
-		log.Printf("Trying to run Close() on closed SSHClient")
-		return
+func (c *SSHClient) Close() error {
+	if c.SessOpened {
+		c.Sess.Close()
+		c.SessOpened = false
 	}
-	c.Conn.Close()
-}
-
-func (c *SSHClient) Read(b []byte) (int, error) {
-	log.Printf("Chci cist.... %s", b)
-	return c.RemoteStdout.Read(b)
-}
-
-func (c *SSHClient) Write(b []byte) (int, error) {
-	log.Printf("Chci psat.... %s", b)
-	return c.RemoteStdin.Write(b)
+	if !c.ConnOpened {
+		return fmt.Errorf("Trying to close the already closed connection")
+	}
+	err := c.Conn.Close()
+	c.ConnOpened = false
+	return err
 }
