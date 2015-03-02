@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net"
 	"os"
 	"strings"
@@ -25,6 +24,7 @@ type SSHClient struct { // SSHSession ...?
 	ConnOpened   bool
 	SessOpened   bool
 	Running      bool
+	Prefix       string
 }
 
 type ErrConnect struct {
@@ -149,6 +149,7 @@ func (c *SSHClient) reconnect() error {
 	return nil
 }
 
+// Run runs cmd.Exec remotely on cmd.Host.
 func (c *SSHClient) Run(cmd Command) error {
 	if c.Running {
 		return fmt.Errorf("Session already running")
@@ -186,24 +187,8 @@ func (c *SSHClient) Run(cmd Command) error {
 	// 	return ErrConnect{host, err.Error()}
 	// }
 
-	if cmd.Exec != "" {
-		if err := c.Sess.Start(cmd.Exec); err != nil {
-			return ErrCmd{cmd, err.Error()}
-		}
-	} else if cmd.Script != "" {
-		f, err := os.Open(cmd.Script)
-		if err != nil {
-			return err
-		}
-		data, err := ioutil.ReadAll(f)
-		if err != nil {
-			return err
-		}
-		if err := c.Sess.Start(string(data)); err != nil {
-			return ErrCmd{cmd, err.Error()}
-		}
-	} else {
-		fmt.Errorf("Nothing to run")
+	if err := c.Sess.Start(cmd.Exec); err != nil {
+		return ErrCmd{cmd, err.Error()}
 	}
 
 	c.Running = true

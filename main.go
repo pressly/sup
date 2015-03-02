@@ -13,6 +13,7 @@ import (
 )
 
 type Command struct {
+	Name   string `yaml:-`
 	Desc   string `yaml:"desc"`
 	Exec   string `yaml:"exec`
 	Script string `yaml:"script"`
@@ -81,9 +82,10 @@ func main() {
 		for _, cmd := range target {
 			command, isCommand := conf.Commands[cmd]
 			if !isCommand {
-				log.Printf("Unknown command \"%v\" (from target \"%v\")\n\n", cmd, target)
+				log.Printf("Unknown command \"%v\" (from target \"%v\": %v)\n\n", cmd, os.Args[2], target)
 				usage(&conf)
 			}
+			command.Name = cmd
 			commands = append(commands, command)
 		}
 	} else {
@@ -93,7 +95,7 @@ func main() {
 			log.Printf("Unknown target/command \"%v\"\n\n", os.Args[2])
 			usage(&conf)
 		}
-
+		command.Name = os.Args[2]
 		commands = append(commands, command)
 	}
 
@@ -114,26 +116,43 @@ func main() {
 		clients[i] = c
 	}
 
-	for _, command := range commands {
-		log.Printf("Run command \"%v\"", command)
+	for _, cmd := range commands {
+		if cmd.Exec != "" {
+			log.Printf("Run command \"%v\": Exec \"%v\"", cmd.Name, cmd.Exec)
+		} else if cmd.Script != "" {
+			log.Printf("Run command \"%v\": Exec script \"%v\"", cmd.Name, cmd.Script)
+			f, err := os.Open(cmd.Script)
+			if err != nil {
+				log.Fatal(err)
+			}
+			data, err = ioutil.ReadAll(f)
+			if err != nil {
+				log.Fatal(err)
+			}
+			cmd.Exec = string(data)
+		} else {
+			log.Fatalf("Run command \"%v\": Nothing to run", cmd.Name)
+		}
 
 		for _, c := range clients {
-			c.Run(command)
-			spaces := strings.Repeat(" ", longestHostLen-len(c.Host))
+			padding := strings.Repeat(" ", longestHostLen-len(c.Host))
+			c.Prefix = padding + c.Host + " | "
+			c.Run(cmd)
+
 			go func(c *SSHClient) {
-				if _, err := io.Copy(os.Stdout, prefixer.New(c.RemoteStdout, spaces+c.Host+" | ")); err != nil {
+				if _, err := io.Copy(os.Stdout, prefixer.New(c.RemoteStdout, c.Prefix)); err != nil {
 					log.Printf("STDOUT(%v): %v", c.Host, err)
 				}
 			}(c)
 			go func(c *SSHClient) {
-				if _, err := io.Copy(os.Stderr, prefixer.New(c.RemoteStderr, spaces+c.Host+" | ")); err != nil {
+				if _, err := io.Copy(os.Stderr, prefixer.New(c.RemoteStderr, c.Prefix)); err != nil {
 					log.Printf("STERR(%v): %v", c.Host, err)
 				}
 			}(c)
 		}
 
 		for _, c := range clients {
-			c.Wait()
+			_ = c.Wait()
 			// TODO: check for exit err:
 			// err = session.Wait()
 			// if err == nil {
