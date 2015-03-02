@@ -18,7 +18,6 @@ type Command struct {
 	Desc   string `yaml:"desc"`
 	Exec   string `yaml:"exec`
 	Script string `yaml:"script"`
-	//Env map[string]string `yaml:"env"`
 }
 
 // Config represents the configuration data that are
@@ -100,10 +99,15 @@ func main() {
 		commands = append(commands, command)
 	}
 
+	env := ``
+	for name, value := range conf.Env {
+		env += `export ` + name + `="` + value + `";`
+	}
+
 	clients := make([]*SSHClient, len(hosts))
 	for i, host := range hosts {
 		c := &SSHClient{
-			Env: map[string]string{"FOO": "sup"},
+			Env: env,
 		}
 		if err := c.Connect(host); err != nil {
 			log.Fatal(err)

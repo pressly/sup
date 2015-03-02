@@ -20,11 +20,13 @@ type SSHClient struct { // SSHSession ...?
 	RemoteStdin  io.WriteCloser
 	RemoteStdout io.Reader
 	RemoteStderr io.Reader
-	Env          map[string]string
-	ConnOpened   bool
-	SessOpened   bool
-	Running      bool
-	Prefix       string
+	//TODO: Use Session RequestPty, Shell() and Session.Env()
+	//Env      map[string]string
+	Env        string //export FOO="bar"; export BAR="baz";
+	ConnOpened bool
+	SessOpened bool
+	Running    bool
+	Prefix     string
 }
 
 type ErrConnect struct {
@@ -172,22 +174,12 @@ func (c *SSHClient) Run(cmd Command) error {
 	// 	return ErrConnect{host, fmt.Sprintf("request for pseudo terminal failed: %s", err)}
 	// }
 
-	// =========== TODO: ENV
-	// err = sess.Start("HI=123 ls -la ; echo $X ; echo sup ; HI=wooooo echo $HI")
-	//err = sess.Start("echo $FOO")
-
-	// for name, value := range c.Env {
-	// 	if err := sess.Setenv(name, value); err != nil {
-	// 		return ErrConnect{host, fmt.Sprintf(`Setenv("%v", "%v"): %v`, name, value, err.Error())}
-	// 	}
-	// }
-
 	// Wanna be interactive? Sure!
 	// if err := sess.Shell(); err != nil {
 	// 	return ErrConnect{host, err.Error()}
 	// }
 
-	if err := c.Sess.Start(cmd.Exec); err != nil {
+	if err := c.Sess.Start(c.Env + cmd.Exec); err != nil {
 		return ErrCmd{cmd, err.Error()}
 	}
 
