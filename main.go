@@ -7,6 +7,8 @@ import (
 	"os"
 	"strings"
 
+	"github.com/pressly/prefixer"
+
 	"gopkg.in/yaml.v2"
 )
 
@@ -95,12 +97,12 @@ func main() {
 		c.Run(command)
 		spaces := strings.Repeat(" ", longestHostLen-len(c.Host))
 		go func(c *SSHClient) {
-			if _, err := io.Copy(os.Stdout, NewPrefixedLineReader(c.RemoteStdout, spaces+c.Host+" | ")); err != nil {
+			if _, err := io.Copy(os.Stdout, prefixer.New(c.RemoteStdout, spaces+c.Host+" | ")); err != nil {
 				log.Printf("STDOUT(%v): %v", c.Host, err)
 			}
 		}(c)
 		go func(c *SSHClient) {
-			if _, err := io.Copy(os.Stderr, NewPrefixedLineReader(c.RemoteStderr, spaces+c.Host+" | ")); err != nil {
+			if _, err := io.Copy(os.Stderr, prefixer.New(c.RemoteStderr, spaces+c.Host+" | ")); err != nil {
 				log.Printf("STERR(%v): %v", c.Host, err)
 			}
 		}(c)
