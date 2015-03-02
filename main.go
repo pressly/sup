@@ -59,9 +59,9 @@ func usage(conf *Config) {
 
 func main() {
 	var (
-		conf           Config
-		commands       []Command
-		longestHostLen int
+		conf       Config
+		commands   []Command
+		paddingLen int
 	)
 
 	data, _ := ioutil.ReadFile("./Supfile")
@@ -110,8 +110,9 @@ func main() {
 		}
 		defer c.Close()
 
-		if len(c.Host) > longestHostLen {
-			longestHostLen = len(c.Host)
+		len := len(c.User) + 1 + len(c.Host)
+		if len > paddingLen {
+			paddingLen = len
 		}
 
 		clients[i] = c
@@ -136,8 +137,8 @@ func main() {
 		}
 
 		for _, c := range clients {
-			padding := strings.Repeat(" ", longestHostLen-len(c.Host))
-			c.Prefix = padding + c.Host + " | "
+			padding := strings.Repeat(" ", paddingLen-(len(c.User)+1+len(c.Host)))
+			c.Prefix = padding + c.User + "@" + c.Host + " | "
 			c.Run(cmd)
 
 			go func(c *SSHClient) {
