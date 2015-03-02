@@ -31,20 +31,26 @@ type Config struct {
 func usage(conf *Config) {
 	switch len(os.Args) {
 	case 2:
-		log.Fatal("Available commands (from Supfile):\n")
+		log.Println("Usage: sup <hosts> <target/command>\n")
+		fallthrough
+	case 3:
+		log.Println("Available targets (from Supfile):")
+		for target, _ := range conf.Targets {
+			log.Printf("- %v\n", target)
+		}
+		log.Println("Available commands (from Supfile):")
 		for cmd, _ := range conf.Commands {
-			log.Fatal("- %v\n", cmd)
+			log.Printf("- %v\n", cmd)
 		}
 	case 1:
-		log.Fatal("Available hosts (from Supfile):\n")
+		log.Println("Usage: sup <hosts> <target/command>")
+		log.Println("Available hosts (from Supfile):")
 		for group, hosts := range conf.Hosts {
-			log.Fatal("- %v\n", group)
+			log.Printf("- %v\n", group)
 			for _, host := range hosts {
-				log.Fatal("   - %v\n", host)
+				log.Printf("   - %v\n", host)
 			}
 		}
-	default:
-		log.Fatal("Usage:\nsup <host-group> <command-alias>")
 	}
 	os.Exit(1)
 }
@@ -52,6 +58,7 @@ func usage(conf *Config) {
 func main() {
 	var (
 		conf           Config
+		commands       []Command
 		longestHostLen int
 	)
 
@@ -69,11 +76,25 @@ func main() {
 		usage(&conf)
 	}
 
-	// TODO: Targets?
+	target, isTarget := conf.Targets[os.Args[2]]
+	if isTarget {
+		for _, cmd := range target {
+			command, isCommand := conf.Commands[cmd]
+			if !isCommand {
+				log.Printf("Unknown command \"%v\" (from target \"%v\")\n\n", cmd, target)
+				usage(&conf)
+			}
+			commands = append(commands, command)
+		}
+	} else {
+		command, isCommand := conf.Commands[os.Args[2]]
+		if !isCommand {
+			// Not a target, nor command
+			log.Printf("Unknown target/command \"%v\"\n\n", os.Args[2])
+			usage(&conf)
+		}
 
-	command, ok := conf.Commands[os.Args[2]]
-	if !ok {
-		usage(&conf)
+		commands = append(commands, command)
 	}
 
 	clients := make([]*SSHClient, len(hosts))
@@ -93,56 +114,38 @@ func main() {
 		clients[i] = c
 	}
 
-	for _, c := range clients {
-		c.Run(command)
-		spaces := strings.Repeat(" ", longestHostLen-len(c.Host))
-		go func(c *SSHClient) {
-			if _, err := io.Copy(os.Stdout, prefixer.New(c.RemoteStdout, spaces+c.Host+" | ")); err != nil {
-				log.Printf("STDOUT(%v): %v", c.Host, err)
-			}
-		}(c)
-		go func(c *SSHClient) {
-			if _, err := io.Copy(os.Stderr, prefixer.New(c.RemoteStderr, spaces+c.Host+" | ")); err != nil {
-				log.Printf("STERR(%v): %v", c.Host, err)
-			}
-		}(c)
+	for _, command := range commands {
+		log.Printf("Run command \"%v\"", command)
+
+		for _, c := range clients {
+			c.Run(command)
+			spaces := strings.Repeat(" ", longestHostLen-len(c.Host))
+			go func(c *SSHClient) {
+				if _, err := io.Copy(os.Stdout, prefixer.New(c.RemoteStdout, spaces+c.Host+" | ")); err != nil {
+					log.Printf("STDOUT(%v): %v", c.Host, err)
+				}
+			}(c)
+			go func(c *SSHClient) {
+				if _, err := io.Copy(os.Stderr, prefixer.New(c.RemoteStderr, spaces+c.Host+" | ")); err != nil {
+					log.Printf("STERR(%v): %v", c.Host, err)
+				}
+			}(c)
+		}
+
+		for _, c := range clients {
+			c.Wait()
+			// TODO: check for exit err:
+			// err = session.Wait()
+			// if err == nil {
+			// 	t.Fatalf("expected command to fail but it didn't")
+			// }
+			// e, ok := err.(*ExitError)
+			// if !ok {
+			// 	t.Fatalf("expected *ExitError but got %T", err)
+			// }
+			// if e.ExitStatus() != 15 {
+			// 	t.Fatalf("expected command to exit with 15 but got %v", e.ExitStatus())
+			// }
+		}
 	}
-
-	for _, c := range clients {
-		c.Wait()
-		// TODO: check for exit err:
-		// err = session.Wait()
-		// if err == nil {
-		// 	t.Fatalf("expected command to fail but it didn't")
-		// }
-		// e, ok := err.(*ExitError)
-		// if !ok {
-		// 	t.Fatalf("expected *ExitError but got %T", err)
-		// }
-		// if e.ExitStatus() != 15 {
-		// 	t.Fatalf("expected command to exit with 15 but got %v", e.ExitStatus())
-		// }
-	}
-
-	// 1. Parse the command that we're going to run..
-	// ie. from:
-	// $ sup beta deploy  ===> 1. connect to beta  2. run deploy command
-	// $ sup beta stop
-	// $ sup beta start
-	// command := commands["ping"].(map[interface{}]interface{}) // ..
-	// cmd := command["exec"].(string)
-
-	// log.Printf("the command: %s", cmd)
-
-	// log.Println(b)
-	// s.Session.Wait()
-
-	// s.Run(cmd)
-	// s.Quit()
-
-	// 2. Open connection to each host - all must connect
-
-	// 3.
-
-	//s.Session.Wait()
 }
