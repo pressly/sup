@@ -216,7 +216,9 @@ func (c *SSHClient) Wait() error {
 		return fmt.Errorf("Trying to wait on stopped session")
 	}
 	err := c.Sess.Wait()
+	c.Sess.Close()
 	c.Running = false
+	c.SessOpened = false
 	return err
 }
 
