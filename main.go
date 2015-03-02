@@ -9,6 +9,7 @@ import (
 
 	"github.com/pressly/prefixer"
 
+	"golang.org/x/crypto/ssh"
 	"gopkg.in/yaml.v2"
 )
 
@@ -141,30 +142,27 @@ func main() {
 
 			go func(c *SSHClient) {
 				if _, err := io.Copy(os.Stdout, prefixer.New(c.RemoteStdout, c.Prefix)); err != nil {
-					log.Printf("STDOUT(%v): %v", c.Host, err)
+					log.Printf("%sSTDOUT error: %v", c.Prefix, c.Host, err)
 				}
 			}(c)
 			go func(c *SSHClient) {
 				if _, err := io.Copy(os.Stderr, prefixer.New(c.RemoteStderr, c.Prefix)); err != nil {
-					log.Printf("STERR(%v): %v", c.Host, err)
+					log.Printf("%sSTDERR error: %v", c.Prefix, c.Host, err)
 				}
 			}(c)
 		}
 
 		for _, c := range clients {
-			_ = c.Wait()
-			// TODO: check for exit err:
-			// err = session.Wait()
-			// if err == nil {
-			// 	t.Fatalf("expected command to fail but it didn't")
-			// }
-			// e, ok := err.(*ExitError)
-			// if !ok {
-			// 	t.Fatalf("expected *ExitError but got %T", err)
-			// }
-			// if e.ExitStatus() != 15 {
-			// 	t.Fatalf("expected command to exit with 15 but got %v", e.ExitStatus())
-			// }
+			if err := c.Wait(); err != nil {
+				//TODO: Handle the SSH ExitError in ssh.go
+				e, ok := err.(*ssh.ExitError)
+				if !ok {
+					log.Fatalf("%sexpected *ExitError but got %T", c.Prefix, err)
+				}
+				if e.ExitStatus() != 15 {
+					log.Fatalf("%sexit %v", c.Prefix, e.ExitStatus())
+				}
+			}
 		}
 	}
 }
