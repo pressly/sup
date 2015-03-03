@@ -1,20 +1,6 @@
 # Hubserver
 ---
 
-hosts:
-  local: # For testing purposes only
-    - localhost
-    - localhost
-    - localhost
-    - localhost
-    - localhost
-  dev:
-    - ubuntu@betabox.x.pressly.io
-  beta:
-    - betabox.x.pressly.io:22
-  prod:
-    - ubuntu@betabox.x.pressly.io
-
 env:
   NAME: hubserver
   IMAGE: pressly/hubserver
@@ -23,11 +9,41 @@ env:
   HOST_PORT: 80
   CONTAINER_PORT: 3000
   USER: $USER
+  FOO: "bar"
+
+networks:
+  local: # For testing purposes only
+    env:
+      CONFIG: /data/etc/hubserver-local.conf
+    hosts:
+      - docker@192.168.59.103
+      - docker@192.168.59.103
+      - localhost
+      - localhost
+      - docker@192.168.59.103
+      - docker@192.168.59.103
+  dev:
+    hosts:
+      - ubuntu@betabox.x.pressly.io
+  beta:
+    hosts:
+      - ubuntu@betabox.x.pressly.io:22
+  prod:
+    hosts:
+      - ubuntu@betabox.x.pressly.io
 
 commands:
+  foo:
+    exec: echo $FOO
+
   ping:
-    desc: Print OS name
     exec: uname -a
+
+  date:
+    exec: date
+
+  sleep:
+    exec: sleep 0.$RANDOM
 
   ps:
     desc: Container list
@@ -35,7 +51,7 @@ commands:
 
   hello:
     desc: Say something..
-    exec: echo 'hello dude.. sup?'
+    script: ./scripts/hello.sh
 
   # hmm.. does yaml parser give us comments too..?
   # then we could use that for the desc instead..
@@ -55,8 +71,13 @@ commands:
 targets:
   test:
     - ping
-    - ps
-    - hello
+    - date
+    - sleep
+    - ping
+    - date
+    - sleep
+    - ping
+    - date
   deploy:
     - build
     - provision

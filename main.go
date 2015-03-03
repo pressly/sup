@@ -16,13 +16,19 @@ import (
 // Config represents the configuration data that are
 // loaded from the Supfile YAML file.
 type Config struct {
-	Hosts    map[string][]string `yaml:"hosts"`
-	Env      map[string]string   `yaml:"env"`
+	Networks map[string]Network  `yaml:"networks"`
 	Commands map[string]Command  `yaml:"commands"`
 	Targets  map[string][]string `yaml:"targets"`
+	Env      map[string]string   `yaml:"env"`
 }
 
-// Command represents the
+// Network represents the group of hosts with a custom env.
+type Network struct {
+	Hosts []string          `yaml:"hosts"`
+	Env   map[string]string `yaml:"env"`
+}
+
+// Command represents set of commands to be run remotely.
 type Command struct {
 	Name   string `yaml:-` // To be parsed manually.
 	Desc   string `yaml:"desc"`
@@ -32,14 +38,14 @@ type Command struct {
 
 // usage prints help for an arg and exits.
 func usage(conf *Config, arg int) {
-	log.Println("Usage: sup <hosts> <target/command>\n")
+	log.Println("Usage: sup <network> <target/command>\n")
 	switch arg {
 	case 1:
-		// <hosts> missing, print available hosts.
-		log.Println("Available hosts (from Supfile):")
-		for group, hosts := range conf.Hosts {
-			log.Printf("- %v\n", group)
-			for _, host := range hosts {
+		// <network> missing, print available hosts.
+		log.Println("Available networks (from Supfile):")
+		for name, network := range conf.Networks {
+			log.Printf("- %v\n", name)
+			for _, host := range network.Hosts {
 				log.Printf("   - %v\n", host)
 			}
 		}
@@ -75,9 +81,16 @@ func main() {
 	if len(os.Args) < 2 {
 		usage(&conf, len(os.Args))
 	}
-	// Does the <host> exist?
-	hosts, ok := conf.Hosts[os.Args[1]]
-	if !ok || len(hosts) == 0 {
+	// Does the <network> exist?
+	network, ok := conf.Networks[os.Args[1]]
+	if !ok {
+		log.Printf("Unknown network \"%v\"\n\n", os.Args[1])
+		usage(&conf, 1)
+	}
+
+	// Does <network> have any hosts?
+	if len(network.Hosts) == 0 {
+		log.Printf("No hosts specified for network \"%v\"", os.Args[1])
 		usage(&conf, 1)
 	}
 
@@ -122,10 +135,13 @@ func main() {
 	for name, value := range conf.Env {
 		env += `export ` + name + `="` + value + `";`
 	}
+	for name, value := range network.Env {
+		env += `export ` + name + `="` + value + `";`
+	}
 
 	// Open SSH connection to all the hosts.
-	clients := make([]*SSHClient, len(hosts))
-	for i, host := range hosts {
+	clients := make([]*SSHClient, len(network.Hosts))
+	for i, host := range network.Hosts {
 		c := &SSHClient{
 			Env: env,
 		}
