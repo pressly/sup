@@ -64,39 +64,30 @@ func usage(conf *Config, arg int) {
 	os.Exit(1)
 }
 
-func main() {
-	var (
-		conf       Config
-		commands   []Command
-		paddingLen int
-	)
-
-	// Read configuration file.
-	data, _ := ioutil.ReadFile("./Supfile")
-	if err := yaml.Unmarshal(data, &conf); err != nil {
-		log.Fatal(err)
-	}
+// parseArgs parses os.Args for network and commands to be run.
+func parseArgs(conf *Config) (Network, []Command) {
+	var commands []Command
 
 	// Check for the first argument first
 	if len(os.Args) < 2 {
-		usage(&conf, len(os.Args))
+		usage(conf, len(os.Args))
 	}
 	// Does the <network> exist?
 	network, ok := conf.Networks[os.Args[1]]
 	if !ok {
 		log.Printf("Unknown network \"%v\"\n\n", os.Args[1])
-		usage(&conf, 1)
+		usage(conf, 1)
 	}
 
 	// Does <network> have any hosts?
 	if len(network.Hosts) == 0 {
 		log.Printf("No hosts specified for network \"%v\"", os.Args[1])
-		usage(&conf, 1)
+		usage(conf, 1)
 	}
 
 	// Check for the second argument
 	if len(os.Args) < 3 {
-		usage(&conf, len(os.Args))
+		usage(conf, len(os.Args))
 	}
 	// Does the <target/command> exist?
 	target, isTarget := conf.Targets[os.Args[2]]
@@ -107,7 +98,7 @@ func main() {
 			command, isCommand := conf.Commands[cmd]
 			if !isCommand {
 				log.Printf("Unknown command \"%v\" (from target \"%v\": %v)\n\n", cmd, os.Args[2], target)
-				usage(&conf, 2)
+				usage(conf, 2)
 			}
 			command.Name = cmd
 			commands = append(commands, command)
@@ -118,7 +109,7 @@ func main() {
 		if !isCommand {
 			// Not a target, nor command.
 			log.Printf("Unknown target/command \"%v\"\n\n", os.Args[2])
-			usage(&conf, 2)
+			usage(conf, 2)
 		}
 		command.Name = os.Args[2]
 		commands = append(commands, command)
@@ -126,8 +117,26 @@ func main() {
 
 	// Check for extra arguments
 	if len(os.Args) != 3 {
-		usage(&conf, len(os.Args))
+		usage(conf, len(os.Args))
 	}
+
+	return network, commands
+}
+
+func main() {
+	var (
+		conf       Config
+		paddingLen int
+	)
+
+	// Read configuration file.
+	data, _ := ioutil.ReadFile("./Supfile")
+	if err := yaml.Unmarshal(data, &conf); err != nil {
+		log.Fatal(err)
+	}
+
+	// Parse network and commands to be run from os.Args.
+	network, commands := parseArgs(&conf)
 
 	// Process all ENVs into a string of form
 	// `export FOO="bar"; export BAR="baz";`.
