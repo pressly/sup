@@ -30,12 +30,12 @@ type Command struct {
 	Script string `yaml:"script"` // A file to be read into Exec.
 }
 
-// usage prints help and exits.
-func usage(conf *Config) {
-	switch len(os.Args) {
+// usage prints help for an arg and exits.
+func usage(conf *Config, arg int) {
+	log.Println("Usage: sup <hosts> <target/command>\n")
+	switch arg {
 	case 1:
 		// <hosts> missing, print available hosts.
-		log.Println("Usage: sup <hosts> <target/command>")
 		log.Println("Available hosts (from Supfile):")
 		for group, hosts := range conf.Hosts {
 			log.Printf("- %v\n", group)
@@ -44,10 +44,6 @@ func usage(conf *Config) {
 			}
 		}
 	case 2:
-		// <target/command> missing.
-		log.Println("Usage: sup <hosts> <target/command>\n")
-		fallthrough
-	case 3:
 		// <target/command> not found or missing,
 		// print available targets/commands.
 		log.Println("Available targets (from Supfile):")
@@ -75,17 +71,20 @@ func main() {
 		log.Fatal(err)
 	}
 
-	// We expect filename + two arguments.
-	if len(os.Args) != 3 {
-		usage(&conf)
+	// Check for the first argument first
+	if len(os.Args) < 2 {
+		usage(&conf, len(os.Args))
 	}
-
 	// Does the <host> exist?
 	hosts, ok := conf.Hosts[os.Args[1]]
 	if !ok || len(hosts) == 0 {
-		usage(&conf)
+		usage(&conf, 1)
 	}
 
+	// Check for the second argument
+	if len(os.Args) < 3 {
+		usage(&conf, len(os.Args))
+	}
 	// Does the <target/command> exist?
 	target, isTarget := conf.Targets[os.Args[2]]
 	if isTarget {
@@ -95,7 +94,7 @@ func main() {
 			command, isCommand := conf.Commands[cmd]
 			if !isCommand {
 				log.Printf("Unknown command \"%v\" (from target \"%v\": %v)\n\n", cmd, os.Args[2], target)
-				usage(&conf)
+				usage(&conf, 2)
 			}
 			command.Name = cmd
 			commands = append(commands, command)
@@ -106,10 +105,15 @@ func main() {
 		if !isCommand {
 			// Not a target, nor command.
 			log.Printf("Unknown target/command \"%v\"\n\n", os.Args[2])
-			usage(&conf)
+			usage(&conf, 2)
 		}
 		command.Name = os.Args[2]
 		commands = append(commands, command)
+	}
+
+	// Check for extra arguments
+	if len(os.Args) != 3 {
+		usage(&conf, len(os.Args))
 	}
 
 	// Process all ENVs into a string of form
