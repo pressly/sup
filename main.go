@@ -164,9 +164,10 @@ func main() {
 		}
 
 		// Run the command on all hosts in parallel.
-		for _, c := range clients {
+		for i, c := range clients {
 			padding := strings.Repeat(" ", paddingLen-(len(c.User)+1+len(c.Host)))
-			c.Prefix = padding + c.User + "@" + c.Host + " | "
+
+			c.Prefix = string(Colors[i%len(Colors)]) + padding + c.User + "@" + c.Host + " | "
 			c.Run(cmd)
 
 			go func(c *SSHClient) {
