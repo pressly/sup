@@ -32,8 +32,8 @@ type Network struct {
 type Command struct {
 	Name   string `yaml:-` // To be parsed manually.
 	Desc   string `yaml:"desc"`
-	Exec   string `yaml:"exec`
-	Script string `yaml:"script"` // A file to be read into Exec.
+	Run    string `yaml:"run`
+	Script string `yaml:"script"` // A file to be read into Run.
 }
 
 // usage prints help for an arg and exits.
@@ -170,7 +170,7 @@ func main() {
 	// Run the command(s) remotely on all hosts in parallel.
 	// Run multiple commands (from) sequentally.
 	for _, cmd := range commands {
-		// Script? Read it into the Exec as string of commands.
+		// Script? Read it into the Run as string of commands.
 		if cmd.Script != "" {
 			f, err := os.Open(cmd.Script)
 			if err != nil {
@@ -180,11 +180,11 @@ func main() {
 			if err != nil {
 				log.Fatal(err)
 			}
-			cmd.Exec = string(data)
+			cmd.Run = string(data)
 		}
 
 		// No commands specified for the command.
-		if cmd.Exec == "" {
+		if cmd.Run == "" {
 			log.Fatalf("Run command \"%v\": Nothing to run", cmd.Name)
 		}
 

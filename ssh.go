@@ -134,7 +134,7 @@ func (c *SSHClient) reconnect() error {
 	return nil
 }
 
-// Run runs the cmd.Exec command remotely on cmd.Host.
+// Run runs the cmd.Run command remotely on cmd.Host.
 func (c *SSHClient) Run(cmd Command) error {
 	if c.Running {
 		return fmt.Errorf("Session already running")
@@ -146,7 +146,7 @@ func (c *SSHClient) Run(cmd Command) error {
 	}
 
 	// Start the remote command.
-	if err := c.Sess.Start(c.Env + "echo '+++ Running `" + cmd.Exec + "`';" + cmd.Exec); err != nil {
+	if err := c.Sess.Start(c.Env + "echo '+++ Running `" + cmd.Run + "`';" + cmd.Run); err != nil {
 		return ErrCmd{cmd, err.Error()}
 	}
 
