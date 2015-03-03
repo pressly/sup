@@ -195,4 +195,7 @@ func main() {
 			}
 		}
 	}
+
+	//TODO: We should wait for all io.Copy() goroutines.
+	//TODO: We should not exit 0, if there was an error.
 }
