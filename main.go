@@ -141,14 +141,8 @@ func main() {
 	// Run the command(s) remotely on all hosts in parallel.
 	// Run multiple commands (from) sequentally.
 	for _, cmd := range commands {
-
-		// Parse the command first.
-		if cmd.Exec != "" {
-			// String of commands.
-			log.Printf("Run command \"%v\": Exec \"%v\"", cmd.Name, cmd.Exec)
-		} else if cmd.Script != "" {
-			// Script. Read it into a string of commands.
-			log.Printf("Run command \"%v\": Exec script \"%v\"", cmd.Name, cmd.Script)
+		// Script? Read it into the Exec as string of commands.
+		if cmd.Script != "" {
 			f, err := os.Open(cmd.Script)
 			if err != nil {
 				log.Fatal(err)
@@ -158,8 +152,10 @@ func main() {
 				log.Fatal(err)
 			}
 			cmd.Exec = string(data)
-		} else {
-			// No commands specified.
+		}
+
+		// No commands specified for the command.
+		if cmd.Exec == "" {
 			log.Fatalf("Run command \"%v\": Nothing to run", cmd.Name)
 		}
 
