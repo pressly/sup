@@ -146,7 +146,7 @@ func (c *SSHClient) Run(cmd Command) error {
 	}
 
 	// Start the remote command.
-	if err := c.Sess.Start(c.Env + "echo '+++ Running `" + cmd.Run + "`';" + cmd.Run); err != nil {
+	if err := c.Sess.Start(c.Env + "set -x;" + cmd.Run); err != nil {
 		return ErrCmd{cmd, err.Error()}
 	}
 
