@@ -18,8 +18,6 @@ networks:
     hosts:
       - docker@192.168.59.103
       - docker@192.168.59.103
-      - localhost
-      - localhost
       - docker@192.168.59.103
       - docker@192.168.59.103
   dev:
@@ -33,40 +31,23 @@ networks:
       - ubuntu@betabox.x.pressly.io
 
 commands:
-  foo:
-    exec: echo $FOO
-
   ping:
-    exec: uname -a
+    run: uname -a
 
   date:
-    exec: date
+    run: date
 
   sleep:
-    exec: sleep 0.$RANDOM
+    run: sleep 0.$RANDOM
 
   ps:
     desc: Container list
-    exec: sudo docker ps
+    run: sudo docker ps
 
   hello:
     desc: Say something..
     script: ./scripts/hello.sh
 
-  # hmm.. does yaml parser give us comments too..?
-  # then we could use that for the desc instead..
-  provision:
-    desc: Provision the container host OS
-    script: ./scripts/docker/provision.sh
-
-  build:
-    desc: Build docker image
-    script: ./scripts/docker/build.sh
-
-  run:
-    desc: Run container
-    exec: sudo docker run --name $NAME -d -p $PORT \
-          -v $CONFIG:/etc/hubserver.conf $IMAGE
 
 targets:
   test:
