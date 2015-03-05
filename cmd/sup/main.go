@@ -170,16 +170,18 @@ func main() {
 		clients = append(clients, c)
 	}
 
-	// Run the command(s) remotely on all hosts in parallel.
-	// Run multiple commands (from) sequentally.
+	// Run command or run multiple commands defined by target sequentally.
 	for _, cmd := range commands {
+		// Translate command into task(s).
 		tasks, err := client.TasksFromConfigCommand(cmd)
 		if err != nil {
 			log.Fatalf("TasksFromConfigCommand(): ", err)
 		}
 
+		// Run tasks sequentally.
 		for _, task := range tasks {
-			// Run the command on all hosts in parallel.
+
+			// Run task in parallel.
 			for i, c := range clients {
 				padding := strings.Repeat(" ", paddingLen-(len(c.Prefix())))
 				color := terminal.Colors[i%len(terminal.Colors)]
@@ -190,6 +192,7 @@ func main() {
 					log.Fatalf("%sexit %v", prefix, err)
 				}
 
+				// Copy over tasks's STDOUT.
 				go func(c client.Client) {
 					switch t := c.(type) {
 					case *client.SSHClient:
@@ -203,6 +206,7 @@ func main() {
 					}
 				}(c)
 
+				// Copy over tasks's STDERR.
 				go func(c client.Client) {
 					switch t := c.(type) {
 					case *client.SSHClient:
@@ -217,7 +221,7 @@ func main() {
 				}(c)
 			}
 
-			// Wait for all hosts to finish.
+			// Wait for every client to finish the task.
 			for _, c := range clients {
 				if err := c.Wait(); err != nil {
 					//TODO: Handle the SSH ExitError in ssh pkg
@@ -228,7 +232,6 @@ func main() {
 					log.Fatalf("%s: %v", c.Prefix(), err)
 				}
 			}
-
 		}
 	}
 
