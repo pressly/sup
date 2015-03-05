@@ -46,7 +46,7 @@ commands:
 
   hello:
     desc: Say something..
-    script: ./scripts/hello.sh
+    script: ./script.sh
 
   config:
     upload:
