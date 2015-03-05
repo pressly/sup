@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/pressly/stackup/client"
 	"github.com/pressly/stackup/config"
@@ -240,5 +241,8 @@ func main() {
 	}
 
 	//TODO: We should wait for all io.Copy() goroutines.
+	//Ugly hack for now:
+	time.Sleep(1000 * time.Millisecond)
+
 	//TODO: We should not exit 0, if there was an error.
 }
