@@ -5,6 +5,7 @@ import (
 	"io"
 	"net"
 	"os"
+	"os/user"
 	"strings"
 
 	"golang.org/x/crypto/ssh"
@@ -53,7 +54,11 @@ func (c *SSHClient) parseHost(host string) error {
 
 	// Add default user, if not set
 	if c.User == "" {
-		c.User = os.Getenv("USER")
+		u, err := user.Current()
+		if err != nil {
+			return err
+		}
+		c.User = u.Username
 	}
 
 	if strings.Index(c.Host, "/") != -1 {

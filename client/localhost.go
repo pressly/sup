@@ -3,8 +3,8 @@ package client
 import (
 	"fmt"
 	"io"
-	"os"
 	"os/exec"
+	"os/user"
 )
 
 // Client is a wrapper over the SSH connection/sessions.
@@ -18,10 +18,13 @@ type LocalhostClient struct {
 	Env     string //export FOO="bar"; export BAR="baz";
 }
 
-// cmd := exec.Command("/bin/sh", mongoToCsvSH)
-
 func (c *LocalhostClient) Connect(_ string) error {
-	c.User = os.Getenv("USER")
+	u, err := user.Current()
+	if err != nil {
+		return err
+	}
+
+	c.User = u.Username
 	return nil
 }
 
