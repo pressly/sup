@@ -1,4 +1,4 @@
-package ssh
+package client
 
 import (
 	"fmt"
@@ -12,11 +12,9 @@ import (
 // Task represents a set of tasks to be run.
 // TODO(VojtechVitek): This is just blindly copy/pasted from config.Command.
 type Task struct {
-	Name   string `yaml:-` // To be parsed manually.
-	Desc   string `yaml:"desc"`
-	Run    string `yaml:"run`
-	Script string `yaml:"script"` // A file to be read into Run.
-	//Upload []Upload `yaml:"upload"`
+	Name string
+	Desc string
+	Run  string
 }
 
 func TasksFromConfigCommand(cmd config.Command) ([]Task, error) {

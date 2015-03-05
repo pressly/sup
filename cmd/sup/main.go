@@ -7,8 +7,8 @@ import (
 	"os"
 	"strings"
 
+	"github.com/pressly/stackup/client"
 	"github.com/pressly/stackup/config"
-	"github.com/pressly/stackup/ssh"
 	"github.com/pressly/stackup/terminal"
 
 	"github.com/pressly/prefixer"
@@ -134,28 +134,33 @@ func main() {
 	}
 
 	// Open SSH connection to all the hosts.
-	clients := make([]*ssh.Client, len(network.Hosts))
-	for i, host := range network.Hosts {
-		c := &ssh.Client{
+	var clients []client.Client
+	for _, host := range network.Hosts {
+		var c client.Client
+
+		// SSHClient
+		sshClient := &client.SSHClient{
 			Env: env,
 		}
-		if err := c.Connect(host); err != nil {
+		if err := sshClient.Connect(host); err != nil {
 			log.Fatal(err)
 		}
-		defer c.Close()
+		defer sshClient.Close()
 
-		len := len(c.User) + 1 + len(c.Host)
+		len := len(sshClient.Prefix())
 		if len > paddingLen {
 			paddingLen = len
 		}
+		// === END
 
-		clients[i] = c
+		c = sshClient
+		clients = append(clients, c)
 	}
 
 	// Run the command(s) remotely on all hosts in parallel.
 	// Run multiple commands (from) sequentally.
 	for _, cmd := range commands {
-		tasks, err := ssh.TasksFromConfigCommand(cmd)
+		tasks, err := client.TasksFromConfigCommand(cmd)
 		if err != nil {
 			log.Fatalf("TasksFromConfigCommand(): ", err)
 		}
@@ -165,22 +170,27 @@ func main() {
 
 			// Run the command on all hosts in parallel.
 			for i, c := range clients {
-				padding := strings.Repeat(" ", paddingLen-(len(c.User)+1+len(c.Host)))
+				padding := strings.Repeat(" ", paddingLen-(len(c.Prefix())))
 				color := terminal.Colors[i%len(terminal.Colors)]
 
-				c.Prefix = color + padding + c.User + "@" + c.Host + " | "
+				prefix := color + padding + c.Prefix() + " | "
 				c.Run(task)
 
-				go func(c *ssh.Client) {
-					if _, err := io.Copy(os.Stdout, prefixer.New(c.RemoteStdout, c.Prefix)); err != nil {
-						log.Printf("%sSTDOUT error: %v", c.Prefix, c.Host, err)
+				go func(c client.Client) {
+					switch t := c.(type) {
+					case *client.SSHClient:
+						if _, err := io.Copy(os.Stdout, prefixer.New(t.RemoteStdout, prefix)); err != nil {
+							log.Printf("%serror: %v", t.Prefix(), t.Host, err)
+						}
 					}
 				}(c)
-				go func(c *ssh.Client) {
-					if _, err := io.Copy(os.Stderr, prefixer.New(c.RemoteStderr, c.Prefix)); err != nil {
-						log.Printf("%sSTDERR error: %v", c.Prefix, c.Host, err)
-					}
-				}(c)
+
+				//TODO: Refactor above to a function & copy both STDOUT, STDERR
+				// go func(c *client.Client) {
+				// 	if _, err := io.Copy(os.Stderr, prefixer.New(c.RemoteStderr, prefix)); err != nil {
+				// 		log.Printf("%sSTDERR error: %v", c.Prefix, c.Host, err)
+				// 	}
+				// }(c)
 			}
 
 			// Wait for all hosts to finish.
