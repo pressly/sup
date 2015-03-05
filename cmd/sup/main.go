@@ -133,27 +133,40 @@ func main() {
 		env += `export ` + name + `="` + value + `";`
 	}
 
-	// Open SSH connection to all the hosts.
+	// Create clients for every host (either SSH or Localhost).
 	var clients []client.Client
 	for _, host := range network.Hosts {
 		var c client.Client
 
-		// SSHClient
-		sshClient := &client.SSHClient{
-			Env: env,
-		}
-		if err := sshClient.Connect(host); err != nil {
-			log.Fatal(err)
-		}
-		defer sshClient.Close()
+		if host == "localhost" { // LocalhostClient
 
-		len := len(sshClient.Prefix())
+			localhostClient := &client.LocalhostClient{
+				Env: env,
+			}
+			if err := localhostClient.Connect(host); err != nil {
+				log.Fatal(err)
+			}
+
+			c = localhostClient
+
+		} else { // SSHClient
+
+			sshClient := &client.SSHClient{
+				Env: env,
+			}
+			if err := sshClient.Connect(host); err != nil {
+				log.Fatal(err)
+			}
+			defer sshClient.Close()
+
+			c = sshClient
+		}
+
+		len := len(c.Prefix())
 		if len > paddingLen {
 			paddingLen = len
 		}
-		// === END
 
-		c = sshClient
 		clients = append(clients, c)
 	}
 
@@ -166,8 +179,6 @@ func main() {
 		}
 
 		for _, task := range tasks {
-			log.Printf("Running task %v", task)
-
 			// Run the command on all hosts in parallel.
 			for i, c := range clients {
 				padding := strings.Repeat(" ", paddingLen-(len(c.Prefix())))
@@ -180,7 +191,11 @@ func main() {
 					switch t := c.(type) {
 					case *client.SSHClient:
 						if _, err := io.Copy(os.Stdout, prefixer.New(t.RemoteStdout, prefix)); err != nil {
-							log.Printf("%serror: %v", t.Prefix(), t.Host, err)
+							log.Printf("%serror: %v", t.Prefix(), err)
+						}
+					case *client.LocalhostClient:
+						if _, err := io.Copy(os.Stdout, prefixer.New(t.Stdout, prefix)); err != nil {
+							log.Printf("%serror: %v", t.Prefix(), err)
 						}
 					}
 				}(c)

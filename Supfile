@@ -16,6 +16,7 @@ networks:
     env:
       CONFIG: /data/etc/hubserver-local.conf
     hosts:
+      - localhost
       - docker@192.168.59.103
       - docker@192.168.59.103
       - docker@192.168.59.103
