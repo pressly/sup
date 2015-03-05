@@ -34,12 +34,16 @@ func usage(conf *config.Config, arg int) {
 		// <target/command> not found or missing,
 		// print available targets/commands.
 		log.Println("Available targets (from Supfile):")
-		for target, _ := range conf.Targets {
-			log.Printf("- %v\n", target)
+		for name, commands := range conf.Targets {
+			log.Printf("- %v", name)
+			for _, cmd := range commands {
+				log.Printf("\t%v\n", cmd)
+			}
 		}
+		log.Println()
 		log.Println("Available commands (from Supfile):")
-		for cmd, _ := range conf.Commands {
-			log.Printf("- %v\n", cmd)
+		for name, cmd := range conf.Commands {
+			log.Printf("- %v\t%v", name, cmd.Desc)
 		}
 	}
 	os.Exit(1)

@@ -16,7 +16,7 @@ TBD
     TBD.
 
 # Example
-See [example Supfile](./example/Supfile).
+See [example Supfile](./Supfile).
 
 # License
 TBD

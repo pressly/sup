@@ -7,6 +7,9 @@ help:
 	@echo "clean:   Clean up."
 .PHONY: help
 
+run: install
+	sup local test
+
 all: build test
 .PHONY: all
 
