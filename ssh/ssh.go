@@ -1,4 +1,4 @@
-package main
+package ssh
 
 import (
 	"fmt"
@@ -11,8 +11,8 @@ import (
 	"golang.org/x/crypto/ssh/agent"
 )
 
-// SSHClient is a wrapper over the SSH connection/sessions.
-type SSHClient struct {
+// Client is a wrapper over the SSH connection/sessions.
+type Client struct {
 	User         string
 	Host         string
 	Agent        net.Conn
@@ -30,8 +30,18 @@ type SSHClient struct {
 	Prefix     string
 }
 
+type ErrConnect struct {
+	User   string
+	Host   string
+	Reason string
+}
+
+func (e ErrConnect) Error() string {
+	return fmt.Sprintf(`Connect("%v@%v"): %v`, e.User, e.Host, e.Reason)
+}
+
 // parseHost parses and normalizes <user>@<host:port> from a given string.
-func (c *SSHClient) parseHost(host string) error {
+func (c *Client) parseHost(host string) error {
 	c.Host = host
 
 	// Remove extra "ssh://" schema
@@ -63,7 +73,7 @@ func (c *SSHClient) parseHost(host string) error {
 
 // Connect creates SSH connection to a specified host.
 // It expects the host of the form "[ssh://]host[:port]".
-func (c *SSHClient) Connect(host string) error {
+func (c *Client) Connect(host string) error {
 	if c.ConnOpened {
 		return fmt.Errorf("Already connected")
 	}
@@ -104,7 +114,7 @@ func (c *SSHClient) Connect(host string) error {
 }
 
 // reconnect creates new session for the SSH connection.
-func (c *SSHClient) reconnect() error {
+func (c *Client) reconnect() error {
 	if c.SessOpened {
 		return fmt.Errorf("Session already connected")
 	}
@@ -134,8 +144,8 @@ func (c *SSHClient) reconnect() error {
 	return nil
 }
 
-// Run runs the cmd.Run command remotely on cmd.Host.
-func (c *SSHClient) Run(cmd Command) error {
+// Run runs the task.Run command remotely on cmd.Host.
+func (c *Client) Run(task Task) error {
 	if c.Running {
 		return fmt.Errorf("Session already running")
 	}
@@ -146,8 +156,8 @@ func (c *SSHClient) Run(cmd Command) error {
 	}
 
 	// Start the remote command.
-	if err := c.Sess.Start(c.Env + "set -x;" + cmd.Run); err != nil {
-		return ErrCmd{cmd, err.Error()}
+	if err := c.Sess.Start(c.Env + "set -x;" + task.Run); err != nil {
+		return ErrTask{task, err.Error()}
 	}
 
 	c.Running = true
@@ -156,7 +166,7 @@ func (c *SSHClient) Run(cmd Command) error {
 
 // Wait waits until the remote command finishes and exits.
 // It closes the SSH session.
-func (c *SSHClient) Wait() error {
+func (c *Client) Wait() error {
 	if !c.Running {
 		return fmt.Errorf("Trying to wait on stopped session")
 	}
@@ -170,7 +180,7 @@ func (c *SSHClient) Wait() error {
 }
 
 // Close closes the underlying SSH connection and session.
-func (c *SSHClient) Close() error {
+func (c *Client) Close() error {
 	if c.SessOpened {
 		c.Sess.Close()
 		c.SessOpened = false

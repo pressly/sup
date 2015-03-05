@@ -1,4 +1,4 @@
-package main
+package terminal
 
 var (
 	Colors = []string{

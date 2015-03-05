@@ -7,43 +7,18 @@ import (
 	"os"
 	"strings"
 
+	"github.com/pressly/stackup/config"
+	"github.com/pressly/stackup/ssh"
+	"github.com/pressly/stackup/terminal"
+
 	"github.com/pressly/prefixer"
 
-	"golang.org/x/crypto/ssh"
+	gossh "golang.org/x/crypto/ssh"
 	"gopkg.in/yaml.v2"
 )
 
-// Config represents the configuration data that are
-// loaded from the Supfile YAML file.
-type Config struct {
-	Networks map[string]Network  `yaml:"networks"`
-	Commands map[string]Command  `yaml:"commands"`
-	Targets  map[string][]string `yaml:"targets"`
-	Env      map[string]string   `yaml:"env"`
-}
-
-// Network represents the group of hosts with a custom env.
-type Network struct {
-	Hosts []string          `yaml:"hosts"`
-	Env   map[string]string `yaml:"env"`
-}
-
-type Upload struct {
-	Src string `yaml:"src"`
-	Dst string `yaml:"dst"`
-}
-
-// Command represents set of commands to be run remotely.
-type Command struct {
-	Name   string   `yaml:-` // To be parsed manually.
-	Desc   string   `yaml:"desc"`
-	Run    string   `yaml:"run`
-	Script string   `yaml:"script"` // A file to be read into Run.
-	Upload []Upload `yaml:"upload"`
-}
-
 // usage prints help for an arg and exits.
-func usage(conf *Config, arg int) {
+func usage(conf *config.Config, arg int) {
 	log.Println("Usage: sup <network> <target/command>\n")
 	switch arg {
 	case 1:
@@ -71,8 +46,8 @@ func usage(conf *Config, arg int) {
 }
 
 // parseArgs parses os.Args for network and commands to be run.
-func parseArgs(conf *Config) (Network, []Command) {
-	var commands []Command
+func parseArgs(conf *config.Config) (config.Network, []config.Command) {
+	var commands []config.Command
 
 	// Check for the first argument first
 	if len(os.Args) < 2 {
@@ -131,7 +106,7 @@ func parseArgs(conf *Config) (Network, []Command) {
 
 func main() {
 	var (
-		conf       Config
+		conf       config.Config
 		paddingLen int
 	)
 
@@ -155,9 +130,9 @@ func main() {
 	}
 
 	// Open SSH connection to all the hosts.
-	clients := make([]*SSHClient, len(network.Hosts))
+	clients := make([]*ssh.Client, len(network.Hosts))
 	for i, host := range network.Hosts {
-		c := &SSHClient{
+		c := &ssh.Client{
 			Env: env,
 		}
 		if err := c.Connect(host); err != nil {
@@ -176,56 +151,48 @@ func main() {
 	// Run the command(s) remotely on all hosts in parallel.
 	// Run multiple commands (from) sequentally.
 	for _, cmd := range commands {
-		// Script? Read it into the Run as string of commands.
-		if cmd.Script != "" {
-			f, err := os.Open(cmd.Script)
-			if err != nil {
-				log.Fatal(err)
-			}
-			data, err = ioutil.ReadAll(f)
-			if err != nil {
-				log.Fatal(err)
-			}
-			cmd.Run = string(data)
+		tasks, err := ssh.TasksFromConfigCommand(cmd)
+		if err != nil {
+			log.Fatalf("TasksFromConfigCommand(): ", err)
 		}
 
-		// No commands specified for the command.
-		if cmd.Run == "" {
-			log.Fatalf("Run command \"%v\": Nothing to run", cmd.Name)
-		}
+		for _, task := range tasks {
+			log.Printf("Running task %v", task)
 
-		// Run the command on all hosts in parallel.
-		for i, c := range clients {
-			padding := strings.Repeat(" ", paddingLen-(len(c.User)+1+len(c.Host)))
-			color := Colors[i%len(Colors)]
+			// Run the command on all hosts in parallel.
+			for i, c := range clients {
+				padding := strings.Repeat(" ", paddingLen-(len(c.User)+1+len(c.Host)))
+				color := terminal.Colors[i%len(terminal.Colors)]
 
-			c.Prefix = color + padding + c.User + "@" + c.Host + " | "
-			c.Run(cmd)
+				c.Prefix = color + padding + c.User + "@" + c.Host + " | "
+				c.Run(task)
 
-			go func(c *SSHClient) {
-				if _, err := io.Copy(os.Stdout, prefixer.New(c.RemoteStdout, c.Prefix)); err != nil {
-					log.Printf("%sSTDOUT error: %v", c.Prefix, c.Host, err)
-				}
-			}(c)
-			go func(c *SSHClient) {
-				if _, err := io.Copy(os.Stderr, prefixer.New(c.RemoteStderr, c.Prefix)); err != nil {
-					log.Printf("%sSTDERR error: %v", c.Prefix, c.Host, err)
-				}
-			}(c)
-		}
+				go func(c *ssh.Client) {
+					if _, err := io.Copy(os.Stdout, prefixer.New(c.RemoteStdout, c.Prefix)); err != nil {
+						log.Printf("%sSTDOUT error: %v", c.Prefix, c.Host, err)
+					}
+				}(c)
+				go func(c *ssh.Client) {
+					if _, err := io.Copy(os.Stderr, prefixer.New(c.RemoteStderr, c.Prefix)); err != nil {
+						log.Printf("%sSTDERR error: %v", c.Prefix, c.Host, err)
+					}
+				}(c)
+			}
 
-		// Wait for all hosts to finish.
-		for _, c := range clients {
-			if err := c.Wait(); err != nil {
-				//TODO: Handle the SSH ExitError in ssh.go?
-				e, ok := err.(*ssh.ExitError)
-				if !ok {
-					log.Fatalf("%sexpected *ExitError but got %T", c.Prefix, err)
-				}
-				if e.ExitStatus() != 15 {
-					log.Fatalf("%sexit %v", c.Prefix, e.ExitStatus())
+			// Wait for all hosts to finish.
+			for _, c := range clients {
+				if err := c.Wait(); err != nil {
+					//TODO: Handle the SSH ExitError in ssh pkg
+					e, ok := err.(*gossh.ExitError)
+					if !ok {
+						log.Fatalf("%sexpected *ExitError but got %T", c.Prefix, err)
+					}
+					if e.ExitStatus() != 15 {
+						log.Fatalf("%sexit %v", c.Prefix, e.ExitStatus())
+					}
 				}
 			}
+
 		}
 	}
 
