@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
@@ -232,9 +233,13 @@ func main() {
 					//TODO: Handle the SSH ExitError in ssh pkg
 					e, ok := err.(*gossh.ExitError)
 					if ok && e.ExitStatus() != 15 {
-						log.Fatalf("%sexit %v", c.Prefix(), e.ExitStatus())
+						// TODO: Prefix should be with color.
+						fmt.Fprintf(os.Stderr, "%s | exit %v\n", c.Prefix(), e.ExitStatus())
+						os.Exit(e.ExitStatus())
 					}
-					log.Fatalf("%s: %v", c.Prefix(), err)
+					// TODO: Prefix should be with color.
+					fmt.Fprintf(os.Stderr, "%s | %v\n", c.Prefix(), err)
+					os.Exit(1)
 				}
 			}
 		}
@@ -243,6 +248,4 @@ func main() {
 	//TODO: We should wait for all io.Copy() goroutines.
 	//Ugly hack for now:
 	time.Sleep(1000 * time.Millisecond)
-
-	//TODO: We should not exit 0, if there was an error.
 }
