@@ -28,12 +28,18 @@ type Network struct {
 	Env   map[string]string `yaml:"env"`
 }
 
+type Upload struct {
+	Src string `yaml:"src"`
+	Dst string `yaml:"dst"`
+}
+
 // Command represents set of commands to be run remotely.
 type Command struct {
-	Name   string `yaml:-` // To be parsed manually.
-	Desc   string `yaml:"desc"`
-	Run    string `yaml:"run`
-	Script string `yaml:"script"` // A file to be read into Run.
+	Name   string   `yaml:-` // To be parsed manually.
+	Desc   string   `yaml:"desc"`
+	Run    string   `yaml:"run`
+	Script string   `yaml:"script"` // A file to be read into Run.
+	Upload []Upload `yaml:"upload"`
 }
 
 // usage prints help for an arg and exits.

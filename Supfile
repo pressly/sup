@@ -48,6 +48,10 @@ commands:
     desc: Say something..
     script: ./scripts/hello.sh
 
+  config:
+    upload:
+      - src: ./Supfile
+      - dst: /tmp/
 
 targets:
   test:
