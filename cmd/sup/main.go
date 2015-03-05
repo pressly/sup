@@ -185,27 +185,36 @@ func main() {
 				color := terminal.Colors[i%len(terminal.Colors)]
 
 				prefix := color + padding + c.Prefix() + " | "
-				c.Run(task)
+				err := c.Run(task)
+				if err != nil {
+					log.Fatalf("%sexit %v", prefix, err)
+				}
 
 				go func(c client.Client) {
 					switch t := c.(type) {
 					case *client.SSHClient:
 						if _, err := io.Copy(os.Stdout, prefixer.New(t.RemoteStdout, prefix)); err != nil {
-							log.Printf("%serror: %v", t.Prefix(), err)
+							log.Printf("%sSTDOUT: %v", t.Prefix(), err)
 						}
 					case *client.LocalhostClient:
 						if _, err := io.Copy(os.Stdout, prefixer.New(t.Stdout, prefix)); err != nil {
-							log.Printf("%serror: %v", t.Prefix(), err)
+							log.Printf("%sSTDOUT: %v", t.Prefix(), err)
 						}
 					}
 				}(c)
 
-				//TODO: Refactor above to a function & copy both STDOUT, STDERR
-				// go func(c *client.Client) {
-				// 	if _, err := io.Copy(os.Stderr, prefixer.New(c.RemoteStderr, prefix)); err != nil {
-				// 		log.Printf("%sSTDERR error: %v", c.Prefix, c.Host, err)
-				// 	}
-				// }(c)
+				go func(c client.Client) {
+					switch t := c.(type) {
+					case *client.SSHClient:
+						if _, err := io.Copy(os.Stderr, prefixer.New(t.RemoteStderr, prefix)); err != nil {
+							log.Printf("%sSTDERR: %v", t.Prefix(), err)
+						}
+					case *client.LocalhostClient:
+						if _, err := io.Copy(os.Stderr, prefixer.New(t.Stderr, prefix)); err != nil {
+							log.Printf("%sSTDERR: %v", t.Prefix(), err)
+						}
+					}
+				}(c)
 			}
 
 			// Wait for all hosts to finish.
@@ -213,12 +222,10 @@ func main() {
 				if err := c.Wait(); err != nil {
 					//TODO: Handle the SSH ExitError in ssh pkg
 					e, ok := err.(*gossh.ExitError)
-					if !ok {
-						log.Fatalf("%sexpected *ExitError but got %T", c.Prefix, err)
+					if ok && e.ExitStatus() != 15 {
+						log.Fatalf("%sexit %v", c.Prefix(), e.ExitStatus())
 					}
-					if e.ExitStatus() != 15 {
-						log.Fatalf("%sexit %v", c.Prefix, e.ExitStatus())
-					}
+					log.Fatalf("%s: %v", c.Prefix(), err)
 				}
 			}
 
