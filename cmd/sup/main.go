@@ -50,7 +50,7 @@ func usage(conf *config.Config, arg int) {
 }
 
 // parseArgs parses os.Args for network and commands to be run.
-func parseArgs(conf *config.Config) (config.Network, []config.Command) {
+func parseArgsOrDie(conf *config.Config) (config.Network, []config.Command) {
 	var commands []config.Command
 
 	// Check for the first argument first
@@ -115,13 +115,17 @@ func main() {
 	)
 
 	// Read configuration file.
-	data, _ := ioutil.ReadFile("./Supfile")
-	if err := yaml.Unmarshal(data, &conf); err != nil {
+	data, err := ioutil.ReadFile("./Supfile")
+	if err != nil {
+		log.Fatal(err)
+	}
+	err = yaml.Unmarshal(data, &conf)
+	if err != nil {
 		log.Fatal(err)
 	}
 
 	// Parse network and commands to be run from os.Args.
-	network, commands := parseArgs(&conf)
+	network, commands := parseArgsOrDie(&conf)
 
 	// Process all ENVs into a string of form
 	// `export FOO="bar"; export BAR="baz";`.
