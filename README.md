@@ -1,29 +1,22 @@
 Stack Up
 ========
 
-# or just stackup/cmd/sup   ...?
+Stack Up is a deployment tool that handles multiple machines through SSH at once.
 
-or `sup`/`stack`/`st` for short.
-
-# Stackfile
-
-...... what language bindings to execute stuff...?
-.. mimic the shell.. whatever shell can do, this thing should be able to do..
+    $ sup <network> <target/command>
 
 # Supfile
 
-See [example Supfile](./Supfile).
+```yaml
+TBD
+```
 
 # Usage
 
-    $ sup <host-group> <command-alias>
+    TBD.
 
-    $ sup dev build
-    $ sup dev deploy
-    $ sup dev health
+# Example
+See [example Supfile](./example/Supfile).
 
-    $ sup stg exec ls -la
-
-    $ sup prod top
-    $ sup prod health
-    $ sup prod stats
+# License
+TBD
