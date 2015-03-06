@@ -108,14 +108,10 @@ func parseArgsOrDie(conf *stackup.Config) (stackup.Network, []stackup.Command) {
 	return network, commands
 }
 
-func main() {
-	var (
-		conf       stackup.Config
-		paddingLen int
-	)
-
-	// Read configuration file.
-	data, err := ioutil.ReadFile("./Supfile")
+// parseConfigFileOrDie reads and parses configuration from Supfile in CWD.
+func parseConfigFileOrDie(file string) *stackup.Config {
+	var conf stackup.Config
+	data, err := ioutil.ReadFile(file)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -123,9 +119,16 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	return &conf
+}
+
+func main() {
+	// Parse configuration.
+	// TODO: -f flag.
+	conf := parseConfigFileOrDie("./Supfile")
 
 	// Parse network and commands to be run from os.Args.
-	network, commands := parseArgsOrDie(&conf)
+	network, commands := parseArgsOrDie(conf)
 
 	// Process all ENVs into a string of form
 	// `export FOO="bar"; export BAR="baz";`.
@@ -137,6 +140,8 @@ func main() {
 		env += `export ` + name + `="` + value + `";`
 	}
 
+	var paddingLen int
+
 	// Create clients for every host (either SSH or Localhost).
 	var clients []stackup.Client
 	for _, host := range network.Hosts {
@@ -144,26 +149,26 @@ func main() {
 
 		if host == "localhost" { // LocalhostClient
 
-			localhostClient := &stackup.LocalhostClient{
+			local := &stackup.LocalhostClient{
 				Env: env,
 			}
-			if err := localhostClient.Connect(host); err != nil {
+			if err := local.Connect(host); err != nil {
 				log.Fatal(err)
 			}
 
-			c = localhostClient
+			c = local
 
 		} else { // SSHClient
 
-			sshClient := &stackup.SSHClient{
+			remote := &stackup.SSHClient{
 				Env: env,
 			}
-			if err := sshClient.Connect(host); err != nil {
+			if err := remote.Connect(host); err != nil {
 				log.Fatal(err)
 			}
-			defer sshClient.Close()
+			defer remote.Close()
 
-			c = sshClient
+			c = remote
 		}
 
 		len := len(c.Prefix())
