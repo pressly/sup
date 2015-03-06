@@ -1,23 +1,19 @@
-package client
+package sup
 
 import (
 	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
-
-	"github.com/pressly/stackup/config"
 )
 
-// Task represents a set of tasks to be run.
-// TODO(VojtechVitek): This is just blindly copy/pasted from config.Command.
+// Task represents a set of commands to be run.
 type Task struct {
 	Name string
-	Desc string
 	Run  string
 }
 
-func TasksFromConfigCommand(cmd config.Command) ([]Task, error) {
+func TasksFromConfigCommand(cmd Command) ([]Task, error) {
 	var tasks []Task
 
 	// Script? Read it into the Run as string of commands.

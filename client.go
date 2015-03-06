@@ -1,4 +1,4 @@
-package client
+package sup
 
 type Client interface {
 	Connect(host string) error

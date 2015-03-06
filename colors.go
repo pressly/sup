@@ -1,4 +1,4 @@
-package terminal
+package sup
 
 var (
 	Colors = []string{

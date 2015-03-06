@@ -9,18 +9,16 @@ import (
 	"strings"
 	"time"
 
-	"github.com/pressly/stackup/client"
-	"github.com/pressly/stackup/config"
-	"github.com/pressly/stackup/terminal"
+	sup "github.com/pressly/stackup"
 
 	"github.com/pressly/prefixer"
 
-	gossh "golang.org/x/crypto/ssh"
+	"golang.org/x/crypto/ssh"
 	"gopkg.in/yaml.v2"
 )
 
 // usage prints help for an arg and exits.
-func usage(conf *config.Config, arg int) {
+func usage(conf *sup.Config, arg int) {
 	log.Println("Usage: sup <network> <target/command>\n")
 	switch arg {
 	case 1:
@@ -52,8 +50,8 @@ func usage(conf *config.Config, arg int) {
 }
 
 // parseArgs parses os.Args for network and commands to be run.
-func parseArgsOrDie(conf *config.Config) (config.Network, []config.Command) {
-	var commands []config.Command
+func parseArgsOrDie(conf *sup.Config) (sup.Network, []sup.Command) {
+	var commands []sup.Command
 
 	// Check for the first argument first
 	if len(os.Args) < 2 {
@@ -112,7 +110,7 @@ func parseArgsOrDie(conf *config.Config) (config.Network, []config.Command) {
 
 func main() {
 	var (
-		conf       config.Config
+		conf       sup.Config
 		paddingLen int
 	)
 
@@ -140,13 +138,13 @@ func main() {
 	}
 
 	// Create clients for every host (either SSH or Localhost).
-	var clients []client.Client
+	var clients []sup.Client
 	for _, host := range network.Hosts {
-		var c client.Client
+		var c sup.Client
 
 		if host == "localhost" { // LocalhostClient
 
-			localhostClient := &client.LocalhostClient{
+			localhostClient := &sup.LocalhostClient{
 				Env: env,
 			}
 			if err := localhostClient.Connect(host); err != nil {
@@ -157,7 +155,7 @@ func main() {
 
 		} else { // SSHClient
 
-			sshClient := &client.SSHClient{
+			sshClient := &sup.SSHClient{
 				Env: env,
 			}
 			if err := sshClient.Connect(host); err != nil {
@@ -179,7 +177,7 @@ func main() {
 	// Run command or run multiple commands defined by target sequentally.
 	for _, cmd := range commands {
 		// Translate command into task(s).
-		tasks, err := client.TasksFromConfigCommand(cmd)
+		tasks, err := sup.TasksFromConfigCommand(cmd)
 		if err != nil {
 			log.Fatalf("TasksFromConfigCommand(): ", err)
 		}
@@ -190,7 +188,7 @@ func main() {
 			// Run task in parallel.
 			for i, c := range clients {
 				padding := strings.Repeat(" ", paddingLen-(len(c.Prefix())))
-				color := terminal.Colors[i%len(terminal.Colors)]
+				color := sup.Colors[i%len(sup.Colors)]
 
 				prefix := color + padding + c.Prefix() + " | "
 				err := c.Run(task)
@@ -199,13 +197,13 @@ func main() {
 				}
 
 				// Copy over tasks's STDOUT.
-				go func(c client.Client) {
+				go func(c sup.Client) {
 					switch t := c.(type) {
-					case *client.SSHClient:
+					case *sup.SSHClient:
 						if _, err := io.Copy(os.Stdout, prefixer.New(t.RemoteStdout, prefix)); err != nil {
 							log.Printf("%sSTDOUT: %v", t.Prefix(), err)
 						}
-					case *client.LocalhostClient:
+					case *sup.LocalhostClient:
 						if _, err := io.Copy(os.Stdout, prefixer.New(t.Stdout, prefix)); err != nil {
 							log.Printf("%sSTDOUT: %v", t.Prefix(), err)
 						}
@@ -213,13 +211,13 @@ func main() {
 				}(c)
 
 				// Copy over tasks's STDERR.
-				go func(c client.Client) {
+				go func(c sup.Client) {
 					switch t := c.(type) {
-					case *client.SSHClient:
+					case *sup.SSHClient:
 						if _, err := io.Copy(os.Stderr, prefixer.New(t.RemoteStderr, prefix)); err != nil {
 							log.Printf("%sSTDERR: %v", t.Prefix(), err)
 						}
-					case *client.LocalhostClient:
+					case *sup.LocalhostClient:
 						if _, err := io.Copy(os.Stderr, prefixer.New(t.Stderr, prefix)); err != nil {
 							log.Printf("%sSTDERR: %v", t.Prefix(), err)
 						}
@@ -231,7 +229,7 @@ func main() {
 			for _, c := range clients {
 				if err := c.Wait(); err != nil {
 					//TODO: Handle the SSH ExitError in ssh pkg
-					e, ok := err.(*gossh.ExitError)
+					e, ok := err.(*ssh.ExitError)
 					if ok && e.ExitStatus() != 15 {
 						// TODO: Prefix should be with color.
 						fmt.Fprintf(os.Stderr, "%s | exit %v\n", c.Prefix(), e.ExitStatus())
