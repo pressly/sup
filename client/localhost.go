@@ -35,7 +35,7 @@ func (c *LocalhostClient) Run(task Task) error {
 		return fmt.Errorf("Command already running")
 	}
 
-	cmd := exec.Command("bash", "-xc", task.Run)
+	cmd := exec.Command("bash", "-c", c.Env+"set -x;"+task.Run)
 	c.Cmd = cmd
 
 	c.Stdout, err = cmd.StdoutPipe()
