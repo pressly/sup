@@ -1,4 +1,4 @@
-package sup
+package stackup
 
 // Config represents the configuration data that are
 // loaded from the Supfile YAML file.

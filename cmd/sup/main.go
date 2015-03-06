@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	sup "github.com/pressly/stackup"
+	"github.com/pressly/stackup"
 
 	"github.com/pressly/prefixer"
 
@@ -18,7 +18,7 @@ import (
 )
 
 // usage prints help for an arg and exits.
-func usage(conf *sup.Config, arg int) {
+func usage(conf *stackup.Config, arg int) {
 	log.Println("Usage: sup <network> <target/command>\n")
 	switch arg {
 	case 1:
@@ -50,8 +50,8 @@ func usage(conf *sup.Config, arg int) {
 }
 
 // parseArgs parses os.Args for network and commands to be run.
-func parseArgsOrDie(conf *sup.Config) (sup.Network, []sup.Command) {
-	var commands []sup.Command
+func parseArgsOrDie(conf *stackup.Config) (stackup.Network, []stackup.Command) {
+	var commands []stackup.Command
 
 	// Check for the first argument first
 	if len(os.Args) < 2 {
@@ -110,7 +110,7 @@ func parseArgsOrDie(conf *sup.Config) (sup.Network, []sup.Command) {
 
 func main() {
 	var (
-		conf       sup.Config
+		conf       stackup.Config
 		paddingLen int
 	)
 
@@ -138,13 +138,13 @@ func main() {
 	}
 
 	// Create clients for every host (either SSH or Localhost).
-	var clients []sup.Client
+	var clients []stackup.Client
 	for _, host := range network.Hosts {
-		var c sup.Client
+		var c stackup.Client
 
 		if host == "localhost" { // LocalhostClient
 
-			localhostClient := &sup.LocalhostClient{
+			localhostClient := &stackup.LocalhostClient{
 				Env: env,
 			}
 			if err := localhostClient.Connect(host); err != nil {
@@ -155,7 +155,7 @@ func main() {
 
 		} else { // SSHClient
 
-			sshClient := &sup.SSHClient{
+			sshClient := &stackup.SSHClient{
 				Env: env,
 			}
 			if err := sshClient.Connect(host); err != nil {
@@ -177,7 +177,7 @@ func main() {
 	// Run command or run multiple commands defined by target sequentally.
 	for _, cmd := range commands {
 		// Translate command into task(s).
-		tasks, err := sup.TasksFromConfigCommand(cmd)
+		tasks, err := stackup.TasksFromConfigCommand(cmd)
 		if err != nil {
 			log.Fatalf("TasksFromConfigCommand(): ", err)
 		}
@@ -188,7 +188,7 @@ func main() {
 			// Run task in parallel.
 			for i, c := range clients {
 				padding := strings.Repeat(" ", paddingLen-(len(c.Prefix())))
-				color := sup.Colors[i%len(sup.Colors)]
+				color := stackup.Colors[i%len(stackup.Colors)]
 
 				prefix := color + padding + c.Prefix() + " | "
 				err := c.Run(task)
@@ -197,13 +197,13 @@ func main() {
 				}
 
 				// Copy over tasks's STDOUT.
-				go func(c sup.Client) {
+				go func(c stackup.Client) {
 					switch t := c.(type) {
-					case *sup.SSHClient:
+					case *stackup.SSHClient:
 						if _, err := io.Copy(os.Stdout, prefixer.New(t.RemoteStdout, prefix)); err != nil {
 							log.Printf("%sSTDOUT: %v", t.Prefix(), err)
 						}
-					case *sup.LocalhostClient:
+					case *stackup.LocalhostClient:
 						if _, err := io.Copy(os.Stdout, prefixer.New(t.Stdout, prefix)); err != nil {
 							log.Printf("%sSTDOUT: %v", t.Prefix(), err)
 						}
@@ -211,13 +211,13 @@ func main() {
 				}(c)
 
 				// Copy over tasks's STDERR.
-				go func(c sup.Client) {
+				go func(c stackup.Client) {
 					switch t := c.(type) {
-					case *sup.SSHClient:
+					case *stackup.SSHClient:
 						if _, err := io.Copy(os.Stderr, prefixer.New(t.RemoteStderr, prefix)); err != nil {
 							log.Printf("%sSTDERR: %v", t.Prefix(), err)
 						}
-					case *sup.LocalhostClient:
+					case *stackup.LocalhostClient:
 						if _, err := io.Copy(os.Stderr, prefixer.New(t.Stderr, prefix)); err != nil {
 							log.Printf("%sSTDERR: %v", t.Prefix(), err)
 						}
