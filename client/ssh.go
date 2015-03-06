@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/user"
 	"strings"
+	"sync"
 
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/agent"
@@ -74,18 +75,11 @@ func (c *SSHClient) parseHost(host string) error {
 	return nil
 }
 
-// Connect creates SSH connection to a specified host.
-// It expects the host of the form "[ssh://]host[:port]".
-// TODO: Split Signers to its own method.
-func (c *SSHClient) Connect(host string) error {
-	if c.ConnOpened {
-		return fmt.Errorf("Already connected")
-	}
+var initAuthMethodOnce sync.Once
+var authMethod ssh.AuthMethod
 
-	if err := c.parseHost(host); err != nil {
-		return err
-	}
-
+// initAuthMethod initiates SSH authentication method.
+func initAuthMethod() {
 	var signers []ssh.Signer
 
 	// If there's a running SSH Agent, try to use its Private keys.
@@ -110,12 +104,30 @@ func (c *SSHClient) Connect(host string) error {
 			continue
 		}
 		signers = append(signers, signer)
+
 	}
+	authMethod = ssh.PublicKeys(signers...)
+}
+
+// Connect creates SSH connection to a specified host.
+// It expects the host of the form "[ssh://]host[:port]".
+// TODO: Split Signers to its own method.
+func (c *SSHClient) Connect(host string) error {
+	if c.ConnOpened {
+		return fmt.Errorf("Already connected")
+	}
+
+	err := c.parseHost(host)
+	if err != nil {
+		return err
+	}
+
+	initAuthMethodOnce.Do(initAuthMethod)
 
 	config := &ssh.ClientConfig{
 		User: c.User,
 		Auth: []ssh.AuthMethod{
-			ssh.PublicKeys(signers...),
+			authMethod,
 		},
 	}
 
