@@ -3,6 +3,7 @@ package client
 import (
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net"
 	"os"
 	"os/user"
@@ -75,6 +76,7 @@ func (c *SSHClient) parseHost(host string) error {
 
 // Connect creates SSH connection to a specified host.
 // It expects the host of the form "[ssh://]host[:port]".
+// TODO: Split Signers to its own method.
 func (c *SSHClient) Connect(host string) error {
 	if c.ConnOpened {
 		return fmt.Errorf("Already connected")
@@ -84,19 +86,30 @@ func (c *SSHClient) Connect(host string) error {
 		return err
 	}
 
-	// TODO: add the keys from ~/ssh/config ..
-	// Look for IdentityFiles .. etc...
-
 	var signers []ssh.Signer
 
-	// If there's a running SSH Agent, use its Private keys
+	// If there's a running SSH Agent, try to use its Private keys.
 	sock, err := net.Dial("unix", os.Getenv("SSH_AUTH_SOCK"))
 	if err == nil {
 		agent := agent.NewClient(sock)
-		agentSigners, err := agent.Signers()
-		if err == nil && len(agentSigners) > 0 {
-			signers = append(signers, agentSigners...)
+		signers, _ = agent.Signers()
+	}
+
+	// Try to read user's SSH private keys form the standard paths.
+	files := []string{
+		os.Getenv("HOME") + "/.ssh/id_rsa",
+		os.Getenv("HOME") + "/.ssh/id_dsa",
+	}
+	for _, file := range files {
+		data, err := ioutil.ReadFile(file)
+		if err != nil {
+			continue
 		}
+		signer, err := ssh.ParsePrivateKey(data)
+		if err != nil {
+			continue
+		}
+		signers = append(signers, signer)
 	}
 
 	config := &ssh.ClientConfig{
