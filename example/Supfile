@@ -1,0 +1,87 @@
+# My Supfile
+---
+
+env:
+  NAME: hubserver
+  IMAGE: pressly/hubserver
+  REGISTRY: registry.example.com
+  CONFIG: nginx.conf-dev
+  HOST_PORT: 8080
+  CONTAINER_PORT: 80
+  FOO: "bar"
+
+networks:
+  local:
+    env:
+      FOO: "not a bar on localhost"
+    hosts:
+      - localhost
+      - ssh://localhost
+  dev:
+    hosts:
+      - docker@192.168.59.103
+  beta:
+    env:
+      CONFIG: nginx.conf-beta
+    hosts:
+      - beta1.example.com
+      - beta2.example.com
+      - beta3.example.com
+      - beta4.example.com
+  prod:
+    env:
+      CONFIG: nginx.conf-beta
+    hosts:
+      - prod1.example.com
+      - prod2.example.com
+      - prod3.example.com
+      - prod4.example.com
+
+commands:
+  ping:
+    desc: Ping the machine
+    run: uname -a
+
+  date:
+    desc: Print current time/date
+    run: date
+
+  sleep:
+    desc: Sleep random amount of miliseconds
+    run: sleep 0.$RANDOM
+
+  long:
+    desc: Run long running command
+    run: for i in $(seq 1 100); do echo $i; sleep 1; done
+
+  foo:
+    desc: Print \$FOO variable
+    run: echo $FOO
+
+  hello:
+    desc: Hello World from ./script.sh
+    script: ./script.sh
+
+  ps:
+    desc: List running Docker containers
+    run: sudo docker ps
+
+  config:
+    desc: Upload config file. To be done.
+    upload:
+      - src: ./example/Supfile
+      - dst: /tmp/
+
+targets:
+  test:
+    - ping
+    - date
+    - sleep
+    - ping
+    - date
+    - sleep
+    - ping
+    - date
+  deploy:
+    - build
+    - run
