@@ -44,7 +44,7 @@ func (c *SSHClient) parseHost(host string) error {
 	c.Host = host
 
 	// Remove extra "ssh://" schema
-	if c.Host[:6] == "ssh://" {
+	if len(c.Host) > 6 && c.Host[:6] == "ssh://" {
 		c.Host = c.Host[6:]
 	}
 
