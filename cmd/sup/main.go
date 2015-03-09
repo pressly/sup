@@ -190,6 +190,8 @@ func main() {
 		// Run tasks sequentally.
 		for _, task := range tasks {
 
+			var writers []io.Writer
+
 			// Run task in parallel.
 			for i, c := range clients {
 				padding := strings.Repeat(" ", paddingLen-(len(c.Prefix())))
@@ -228,9 +230,30 @@ func main() {
 						}
 					}
 				}(c)
+
+				switch t := c.(type) {
+				case *stackup.SSHClient:
+					writers = append(writers, t.RemoteStdin)
+				case *stackup.LocalhostClient:
+					writers = append(writers, t.Stdin)
+				}
 			}
 
-			// Wait for every client to finish the task.
+			// Copy over task's STDIN.
+			writer := io.MultiWriter(writers...)
+
+			_, err := io.Copy(writer, task.Input)
+			if err != nil {
+				log.Printf("STDIN: %v", err)
+			}
+
+			//TODO: Use MultiWriteCloser (not in Stdlib), so we can writer.Close()?
+			// 	    Move this at least to some defer function instead.
+			for _, c := range clients {
+				c.WriteClose()
+			}
+
+			// Wait for all clients to finish the task.
 			for _, c := range clients {
 				if err := c.Wait(); err != nil {
 					//TODO: Handle the SSH ExitError in ssh pkg

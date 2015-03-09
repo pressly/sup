@@ -2,6 +2,7 @@ package stackup
 
 import (
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"os"
@@ -9,14 +10,23 @@ import (
 
 // Task represents a set of commands to be run.
 type Task struct {
-	Name string
-	Run  string
+	Run   string
+	Input io.Reader
 }
 
 func TasksFromConfigCommand(cmd Command) ([]Task, error) {
 	var tasks []Task
 
-	// Script? Read it into the Run as string of commands.
+	// Anything to upload?
+	for _, upload := range cmd.Upload {
+		task := Task{
+			Run:   RemoteTarCommand(upload.Dst),
+			Input: NewTarStreamReader(upload.Src),
+		}
+		tasks = append(tasks, task)
+	}
+
+	// Script? Read it as a set of commands.
 	if cmd.Script != "" {
 		f, err := os.Open(cmd.Script)
 		if err != nil {
@@ -27,15 +37,17 @@ func TasksFromConfigCommand(cmd Command) ([]Task, error) {
 			log.Fatal(err)
 		}
 		task := Task{
-			Run: string(data),
+			Run:   string(data),
+			Input: os.Stdin,
 		}
 		tasks = append(tasks, task)
 	}
 
-	// No commands specified for the command.
+	// Command?
 	if cmd.Run != "" {
 		task := Task{
-			Run: cmd.Run,
+			Run:   cmd.Run,
+			Input: os.Stdin,
 		}
 		tasks = append(tasks, task)
 	}

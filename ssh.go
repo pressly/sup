@@ -154,17 +154,17 @@ func (c *SSHClient) Run(task Task) error {
 		return err
 	}
 
+	c.RemoteStdin, err = sess.StdinPipe()
+	if err != nil {
+		return err
+	}
+
 	c.RemoteStdout, err = sess.StdoutPipe()
 	if err != nil {
 		return err
 	}
 
 	c.RemoteStderr, err = sess.StderrPipe()
-	if err != nil {
-		return err
-	}
-
-	c.RemoteStdin, err = sess.StdinPipe()
 	if err != nil {
 		return err
 	}
@@ -214,4 +214,12 @@ func (c *SSHClient) Close() error {
 
 func (c *SSHClient) Prefix() string {
 	return c.User + "@" + c.Host
+}
+
+func (c *SSHClient) Write(p []byte) (n int, err error) {
+	return c.RemoteStdin.Write(p)
+}
+
+func (c *SSHClient) WriteClose() error {
+	return c.RemoteStdin.Close()
 }

@@ -80,3 +80,11 @@ func (c *LocalhostClient) Close() error {
 func (c *LocalhostClient) Prefix() string {
 	return c.User + "@localhost"
 }
+
+func (c *LocalhostClient) Write(p []byte) (n int, err error) {
+	return c.Stdin.Write(p)
+}
+
+func (c *LocalhostClient) WriteClose() error {
+	return c.Stdin.Close()
+}

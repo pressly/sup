@@ -6,4 +6,6 @@ type Client interface {
 	Wait() error
 	Close() error
 	Prefix() string
+	Write(p []byte) (n int, err error)
+	WriteClose() error
 }

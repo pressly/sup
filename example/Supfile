@@ -67,10 +67,10 @@ commands:
     run: sudo docker ps
 
   config:
-    desc: Upload config file. To be done.
+    desc: Upload Supfile to remote /tmp/.
     upload:
-      - src: ./example/Supfile
-      - dst: /tmp/
+      - src: ./Supfile
+        dst: /tmp/
 
 targets:
   test:
