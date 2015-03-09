@@ -14,7 +14,7 @@ import (
 // to properly receive the created TAR stream.
 // TODO: Check for relative directory.
 func RemoteTarCommand(dir string) string {
-	return fmt.Sprintf("tar -C '%s' -xvzf -", dir)
+	return fmt.Sprintf("tar -C \"%s\" -xvzf -", dir)
 }
 
 func LocalTarCommand(path string) string {
