@@ -27,4 +27,5 @@ type Command struct {
 	Run    string   `yaml:"run`
 	Script string   `yaml:"script"` // A file to be read into Run.
 	Upload []Upload `yaml:"upload"`
+	Stdin  bool     `yaml:"stdin"`
 }

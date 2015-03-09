@@ -5,7 +5,7 @@ env:
   NAME: hubserver
   IMAGE: pressly/hubserver
   REGISTRY: registry.example.com
-  CONFIG: nginx.conf-dev
+  TO_CONFIG: /tmp/
   HOST_PORT: 8080
   CONTAINER_PORT: 80
   FOO: "bar"
@@ -13,16 +13,19 @@ env:
 networks:
   local:
     env:
+      FROM_CONFIG: ./nginx.conf-local
       FOO: "not a bar on localhost"
     hosts:
       - localhost
       - ssh://localhost
   dev:
+    env:
+      FROM_CONFIG: ./nginx.conf-dev
     hosts:
       - docker@192.168.59.103
   beta:
     env:
-      CONFIG: nginx.conf-beta
+      FROM_CONFIG: ./nginx.conf-beta
     hosts:
       - beta1.example.com
       - beta2.example.com
@@ -30,7 +33,7 @@ networks:
       - beta4.example.com
   prod:
     env:
-      CONFIG: nginx.conf-beta
+      FROM_CONFIG: ./nginx.conf-prod
     hosts:
       - prod1.example.com
       - prod2.example.com
@@ -60,6 +63,7 @@ commands:
 
   cat:
     desc: Multiplexed STDIN
+    stdin: true
     run: cat -
 
   hello:
@@ -73,8 +77,10 @@ commands:
   config:
     desc: Upload Supfile to remote /tmp/.
     upload:
-      - src: ./Supfile
-        dst: /tmp/
+      - src: $FROM_CONFIG
+        dst: /tmp
+    run: mv /tmp/$FROM_CONFIG /tmp/nginx.conf
+
 
 targets:
   test:

@@ -182,7 +182,7 @@ func main() {
 	// Run command or run multiple commands defined by target sequentally.
 	for _, cmd := range commands {
 		// Translate command into task(s).
-		tasks, err := stackup.TasksFromConfigCommand(cmd)
+		tasks, err := stackup.TasksFromConfigCommand(cmd, env)
 		if err != nil {
 			log.Fatalf("TasksFromConfigCommand(): ", err)
 		}
@@ -240,11 +240,12 @@ func main() {
 			}
 
 			// Copy over task's STDIN.
-			writer := io.MultiWriter(writers...)
-
-			_, err := io.Copy(writer, task.Input)
-			if err != nil {
-				log.Printf("STDIN: %v", err)
+			if task.Input != nil {
+				writer := io.MultiWriter(writers...)
+				_, err := io.Copy(writer, task.Input)
+				if err != nil {
+					log.Printf("STDIN: %v", err)
+				}
 			}
 
 			//TODO: Use MultiWriteCloser (not in Stdlib), so we can writer.Close()?
