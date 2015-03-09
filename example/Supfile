@@ -58,6 +58,10 @@ commands:
     desc: Print \$FOO variable
     run: echo $FOO
 
+  cat:
+    desc: Multiplexed STDIN
+    run: cat -
+
   hello:
     desc: Hello World from ./script.sh
     script: ./script.sh

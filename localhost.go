@@ -48,12 +48,9 @@ func (c *LocalhostClient) Run(task Task) error {
 		return err
 	}
 
-	//TODO: nil should produce /dev/null according to Godoc.
-	//      But it blocks on Wait(), when running `cat -` cmd.
-	cmd.Stdin = nil
 	c.Stdin, err = cmd.StdinPipe()
 	if err != nil {
-		//	return err
+		return err
 	}
 
 	if err := c.Cmd.Start(); err != nil {
