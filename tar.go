@@ -14,11 +14,11 @@ import (
 // to properly receive the created TAR stream.
 // TODO: Check for relative directory.
 func RemoteTarCommand(dir string) string {
-	return fmt.Sprintf("tar -C \"%s\" -xvzf -", dir)
+	return fmt.Sprintf("tar -C \"%s\" --checkpoint=100 --totals -xzf -", dir)
 }
 
 func LocalTarCommand(path string) string {
-	return fmt.Sprintf("tar -C '.' -cvzf - %s", path)
+	return fmt.Sprintf("tar -C '.' -czf - %s", path)
 }
 
 // NewTarStreamReader creates a tar stream reader from a local path.
