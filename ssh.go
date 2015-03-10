@@ -20,7 +20,6 @@ type SSHClient struct {
 	Sess         *ssh.Session
 	User         string
 	Host         string
-	Agent        net.Conn //TODO: Signers, so we can reuse
 	RemoteStdin  io.WriteCloser
 	RemoteStdout io.Reader
 	RemoteStderr io.Reader
@@ -140,7 +139,7 @@ func (c *SSHClient) Connect(host string) error {
 	return nil
 }
 
-// Run runs the task.Run command remotely on cmd.Host.
+// Run runs the task.Run command remotely on c.Host.
 func (c *SSHClient) Run(task Task) error {
 	if c.Running {
 		return fmt.Errorf("Session already running")
