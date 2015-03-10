@@ -261,6 +261,7 @@ func main() {
 					e, ok := err.(*ssh.ExitError)
 					if ok && e.ExitStatus() != 15 {
 						// TODO: Prefix should be with color.
+						// TODO: Store all the errors, and print them after Wait().
 						fmt.Fprintf(os.Stderr, "%s | exit %v\n", c.Prefix(), e.ExitStatus())
 						os.Exit(e.ExitStatus())
 					}
