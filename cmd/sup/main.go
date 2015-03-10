@@ -207,11 +207,15 @@ func main() {
 				go func(c stackup.Client) {
 					switch t := c.(type) {
 					case *stackup.SSHClient:
-						if _, err := io.Copy(os.Stdout, prefixer.New(t.RemoteStdout, prefix)); err != nil {
+						_, err := io.Copy(os.Stdout, prefixer.New(t.RemoteStdout, prefix))
+						if err != nil && err != io.EOF {
+							// TODO: io.Copy() should not return io.EOF at all.
+							// Upstream bug? Or prefixer.WriteTo() bug?
 							log.Printf("%sSTDOUT: %v", t.Prefix(), err)
 						}
 					case *stackup.LocalhostClient:
-						if _, err := io.Copy(os.Stdout, prefixer.New(t.Stdout, prefix)); err != nil {
+						_, err := io.Copy(os.Stdout, prefixer.New(t.Stdout, prefix))
+						if err != nil && err != io.EOF {
 							log.Printf("%sSTDOUT: %v", t.Prefix(), err)
 						}
 					}
@@ -221,11 +225,13 @@ func main() {
 				go func(c stackup.Client) {
 					switch t := c.(type) {
 					case *stackup.SSHClient:
-						if _, err := io.Copy(os.Stderr, prefixer.New(t.RemoteStderr, prefix)); err != nil {
+						_, err := io.Copy(os.Stderr, prefixer.New(t.RemoteStderr, prefix))
+						if err != nil && err != io.EOF {
 							log.Printf("%sSTDERR: %v", t.Prefix(), err)
 						}
 					case *stackup.LocalhostClient:
-						if _, err := io.Copy(os.Stderr, prefixer.New(t.Stderr, prefix)); err != nil {
+						_, err := io.Copy(os.Stderr, prefixer.New(t.Stderr, prefix))
+						if err != nil && err != io.EOF {
 							log.Printf("%sSTDERR: %v", t.Prefix(), err)
 						}
 					}
@@ -246,12 +252,11 @@ func main() {
 				if err != nil {
 					log.Printf("STDIN: %v", err)
 				}
-			}
-
-			//TODO: Use MultiWriteCloser (not in Stdlib), so we can writer.Close()?
-			// 	    Move this at least to some defer function instead.
-			for _, c := range clients {
-				c.WriteClose()
+				//TODO: Use MultiWriteCloser (not in Stdlib), so we can writer.Close()?
+				// 	    Move this at least to some defer function instead.
+				for _, c := range clients {
+					c.WriteClose()
+				}
 			}
 
 			// Wait for all clients to finish the task.

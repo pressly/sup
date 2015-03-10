@@ -24,14 +24,7 @@ func LocalTarCommand(path string) string {
 // NewTarStreamReader creates a tar stream reader from a local path.
 // TODO: Refactor. Use "archive/tar" instead.
 func NewTarStreamReader(path, env string) io.Reader {
-	// // Dumb way how to check if the "path" exist
-	// _, err := os.Stat(path)
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
-
 	cmd := exec.Command("bash", "-c", env+LocalTarCommand(path))
-	//cmd := exec.Command("tar", "-C", ".", "-cvzf", "-", path)
 
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
