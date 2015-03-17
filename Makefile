@@ -15,7 +15,7 @@ build_pkgs:
 	go build ./...
 
 test:
-	#go test | grep -v "no test files" 
+	go test
 	cd example && sup local test
 
 install: build
