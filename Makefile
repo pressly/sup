@@ -1,36 +1,26 @@
-# Old-skool build tools.
+.PHONY: help build build_pkgs test install clean
 
 help:
 	@echo "build:   Build code."
 	@echo "test:    Run tests."
 	@echo "install: Install binary."
 	@echo "clean:   Clean up."
-.PHONY: help
-
-run: install
-	sup local test
-
-all: build test
-.PHONY: all
 
 build: build_pkgs
 	@mkdir -p ./bin
 	@rm -f ./bin/*
 	go build -o ./bin/sup ./cmd/sup
-.PHONY: build
 
 build_pkgs:
 	go build ./...
-.PHONY: build_pkgs
 
 test:
-	@go test ./... | grep -v "no test files" 
-.PHONY: test
+	#go test | grep -v "no test files" 
+	cd example && sup local test
 
 install: build
 	go install ./...
-.PHONY: install
 
 clean:
 	@rm -rf ./bin
-.PHONY: clean
+
