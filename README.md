@@ -7,7 +7,7 @@ Stack Up is a deployment tool that handles multiple machines through SSH at once
 
 # Installation
 
-    $ go install github.com/pressly/stackup/cmd/sup
+    $ go get github.com/pressly/stackup/cmd/sup
 
 # Supfile
 
