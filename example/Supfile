@@ -1,9 +1,10 @@
-# Example Supfile for "My Server"
+# Supfile for "Example" server
 ---
 
 env:
   NAME: example
   REPO: github.com/pressly/stackup
+  BRANCH: master
   IMAGE: pressly/example
   HOST_PORT: 8000
   CONTAINER_PORT: 8000
