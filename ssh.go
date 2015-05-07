@@ -140,7 +140,7 @@ func (c *SSHClient) Connect(host string) error {
 }
 
 // Run runs the task.Run command remotely on c.Host.
-func (c *SSHClient) Run(task Task) error {
+func (c *SSHClient) Run(task *Task) error {
 	if c.Running {
 		return fmt.Errorf("Session already running")
 	}
