@@ -16,7 +16,7 @@ build_pkgs:
 
 test:
 	go test
-	cd example && sup local test
+	cd example && ../bin/sup local test
 
 install: build
 	go install ./...
