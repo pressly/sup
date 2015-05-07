@@ -5,9 +5,9 @@ Stack Up is a simple deployment tool that performs given set of commands on mult
 
     $ sup <network> <target/command>
 
-- <network> - A group of hosts, eg. `dev`, `stg` and `prod`. In this case, `prod` can map to `prod1.example.com`, `prod2.example.com` and `prod3.example.com` hosts.
-- <command> - A named command (or set of commands) to be run remotely.
-- <target> - An alias to run multiple <commands>.
+- `<network>` - A group of hosts, eg. `dev`, `stg` and `prod`. In this case, `prod` can map to `prod1.example.com`, `prod2.example.com` and `prod3.example.com` hosts.
+- `<command>` - A named command (or set of commands) to be run remotely.
+- `<target>` - An alias to run multiple `<commands>`.
 
 [![Sup](./example/sup.png)](https://asciinema.org/a/19658)
 
