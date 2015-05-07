@@ -13,7 +13,7 @@ func usage(conf *stackup.Supfile, arg int) {
 	switch arg {
 	case 1:
 		// <network> missing, print available hosts.
-		log.Println("Available host groups (from ./Supfile):")
+		log.Println("Available networks (from ./Supfile):")
 		for name, network := range conf.Networks {
 			log.Printf("- %v\n", name)
 			for _, host := range network.Hosts {
