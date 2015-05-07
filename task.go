@@ -14,12 +14,12 @@ type Task struct {
 	Input io.Reader
 }
 
-func TasksFromConfigCommand(cmd Command, env string) ([]Task, error) {
-	var tasks []Task
+func TasksFromConfigCommand(cmd *Command, env string) ([]*Task, error) {
+	var tasks []*Task
 
 	// Anything to upload?
 	for _, upload := range cmd.Upload {
-		task := Task{
+		task := &Task{
 			Run:   RemoteTarCommand(upload.Dst),
 			Input: NewTarStreamReader(upload.Src, env),
 		}
@@ -38,7 +38,7 @@ func TasksFromConfigCommand(cmd Command, env string) ([]Task, error) {
 			log.Fatal(err)
 		}
 
-		task := Task{
+		task := &Task{
 			Run: string(data),
 		}
 		if cmd.Stdin {
@@ -50,7 +50,7 @@ func TasksFromConfigCommand(cmd Command, env string) ([]Task, error) {
 
 	// Command?
 	if cmd.Run != "" {
-		task := Task{
+		task := &Task{
 			Run: cmd.Run,
 		}
 		if cmd.Stdin {
@@ -64,7 +64,7 @@ func TasksFromConfigCommand(cmd Command, env string) ([]Task, error) {
 }
 
 type ErrTask struct {
-	Task   Task
+	Task   *Task
 	Reason string
 }
 

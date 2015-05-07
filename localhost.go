@@ -28,7 +28,7 @@ func (c *LocalhostClient) Connect(_ string) error {
 	return nil
 }
 
-func (c *LocalhostClient) Run(task Task) error {
+func (c *LocalhostClient) Run(task *Task) error {
 	var err error
 
 	if c.Running {
