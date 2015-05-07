@@ -1,31 +1,27 @@
-# My Supfile
+# Example Supfile for "My Server"
 ---
 
 env:
-  NAME: hubserver
-  IMAGE: pressly/hubserver
-  REGISTRY: registry.example.com
-  TO_CONFIG: /tmp/
-  HOST_PORT: 8080
-  CONTAINER_PORT: 80
-  FOO: "bar"
+  NAME: example
+  REPO: github.com/pressly/stackup
+  IMAGE: pressly/example
+  HOST_PORT: 8000
+  CONTAINER_PORT: 8000
 
 networks:
   local:
     env:
-      FROM_CONFIG: ./nginx.conf-local
-      FOO: "not a bar on localhost"
+      CONFIG: example.local.cfg
     hosts:
       - localhost
-      - ssh://localhost
   dev:
     env:
-      FROM_CONFIG: ./nginx.conf-dev
+      CONFIG: example.dev.cfg
     hosts:
       - docker@192.168.59.103
-  beta:
+  stg:
     env:
-      FROM_CONFIG: ./nginx.conf-beta
+      CONFIG: example.stg.cfg
     hosts:
       - beta1.example.com
       - beta2.example.com
@@ -33,7 +29,7 @@ networks:
       - beta4.example.com
   prod:
     env:
-      FROM_CONFIG: ./nginx.conf-prod
+      CONFIG: example.prod.cfg
     hosts:
       - prod1.example.com
       - prod2.example.com
@@ -42,56 +38,95 @@ networks:
 
 commands:
   ping:
-    desc: Ping the machine
-    run: uname -a
+    desc: Print uname and current date/time.
+    run: uname -a; date
 
-  date:
-    desc: Print current time/date
-    run: date
-
-  sleep:
-    desc: Sleep random amount of miliseconds
-    run: sleep 0.$RANDOM
-
-  long:
-    desc: Run long running command
-    run: for i in $(seq 1 100); do echo $i; sleep 1; done
-
-  foo:
-    desc: Print \$FOO variable
-    run: echo $FOO
-
-  cat:
-    desc: Multiplexed STDIN
-    stdin: true
-    run: cat -
-
-  hello:
-    desc: Hello World from ./script.sh
-    script: ./script.sh
+  config:
+    desc: Upload/test config file.
+    upload:
+      - src: ./$CONFIG
+        dst: /tmp/
+    run: test -f /tmp/$CONFIG
 
   ps:
     desc: List running Docker containers
-    run: sudo docker ps
+    run: sudo docker ps | grep $NAME
 
-  config:
-    desc: Upload Supfile to remote /tmp/.
+  pull:
+    desc: Pull git repository
+    script: ./scripts/docker-pull.sh
+
+  upload:
+    desc: Upload this repository
     upload:
-      - src: $FROM_CONFIG
-        dst: /tmp
-    run: mv /tmp/$FROM_CONFIG /tmp/nginx.conf
+      - src: ./
+        dst: /tmp/$IMAGE
 
+  build:
+    desc: Build Docker image
+    script: ./scripts/docker-build.sh
+
+  image:
+    desc: List Docker image
+    run: sudo docker images | grep $IMAGE
+
+  run:
+    desc: Run Docker container
+    script: ./scripts/docker-run.sh
+
+  logs:
+    desc: Docker logs
+    run: sudo docker logs $NAME
+
+  tail-logs:
+    desc: Tail Docker logs
+    run: sudo docker logs --tail=20 -f $NAME
+
+  health:
+    desc: Application health check
+    run: curl localhost:$HOST_PORT
+
+  stop:
+    desc: Stop Docker container
+    run: sudo docker stop $NAME || exit 0
+
+  start:
+    desc: Start a stopped Docker container
+    run: sudo docker start $NAME || exit 0
+
+  restart:
+    desc: Restart Docker container
+    run: sudo docker restart $NAME || exit 0
+
+  rm:
+    desc: Remove Docker container
+    run: sudo docker rm $NAME || exit 0
+
+  shell:
+    desc: Interactive shell on all hosts
+    stdin: true
+    run: /bin/sh
+
+  exec:
+    desc: Interactive docker exec on all hosts
+    stdin: true
+    run: docker exec -i $NAME bash
 
 targets:
-  test:
-    - ping
-    - date
-    - sleep
-    - ping
-    - date
-    - sleep
-    - ping
-    - date
   deploy:
     - build
     - run
+
+targets:
+  deploy:
+    #- pull
+    - upload
+    - build
+    - image
+    - config
+    - stop
+    - rm
+    - run
+    - ps
+    - logs
+    - health
