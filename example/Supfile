@@ -24,18 +24,15 @@ networks:
     env:
       CONFIG: example.stg.cfg
     hosts:
-      - beta1.example.com
-      - beta2.example.com
-      - beta3.example.com
-      - beta4.example.com
+      - ubuntu@stg.example.com
+
   prod:
     env:
       CONFIG: example.prod.cfg
     hosts:
-      - prod1.example.com
-      - prod2.example.com
-      - prod3.example.com
-      - prod4.example.com
+      - ubuntu@prod1.example.com
+      - ubuntu@prod2.example.com
+      - ubuntu@prod3.example.com
 
 commands:
   ping:
