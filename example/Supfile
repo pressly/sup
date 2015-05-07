@@ -112,11 +112,6 @@ commands:
 
 targets:
   deploy:
-    - build
-    - run
-
-targets:
-  deploy:
     #- pull
     - upload
     - build
