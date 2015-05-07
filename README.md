@@ -22,4 +22,5 @@ Stack Up is a simple deployment tool that performs given set of commands on mult
 See the [example Supfile](./example/Supfile) to deploy example golang server to a multiple hosts (local/dev/stg/prod networks).
 
 # License
-TBD
+Stack Up is licensed under the [MIT License](./LICENSE).
+
