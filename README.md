@@ -9,15 +9,13 @@ Stack Up is a simple deployment tool that performs given set of commands on mult
 - `<command>` - A named command (or set of commands) to be run remotely.
 - `<target>` - An alias to run multiple `<commands>`.
 
+`sup` picks up `Supfile` config file (YAML) from the current directory (the same way as `make` picks up `Makefile`). See [example Supfile](./example/Supfile).
+
 [![Sup](./example/sup.png)](https://asciinema.org/a/19658)
 
 # Installation
 
     $ go get github.com/pressly/stackup/cmd/sup
-
-# Supfile
-
-See the [example Supfile](./example/Supfile) to deploy example golang server to a multiple hosts (local/dev/stg/prod networks).
 
 # License
 Stack Up is licensed under the [MIT License](./LICENSE).
