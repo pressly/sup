@@ -1,7 +1,7 @@
 # Supfile for "Example" server
 ---
 
-env:
+env: # Environment variables for the commands
   NAME: example
   REPO: github.com/pressly/stackup
   BRANCH: master
@@ -9,17 +9,19 @@ env:
   HOST_PORT: 8000
   CONTAINER_PORT: 8000
 
-networks:
+networks: # Groups of hosts
   local:
     env:
       CONFIG: example.local.cfg
     hosts:
       - localhost
+
   dev:
     env:
       CONFIG: example.dev.cfg
     hosts:
       - docker@192.168.59.103
+
   stg:
     env:
       CONFIG: example.stg.cfg
@@ -34,25 +36,10 @@ networks:
       - ubuntu@prod2.example.com
       - ubuntu@prod3.example.com
 
-commands:
+commands: # Named set of commands to be run remotely
   ping:
     desc: Print uname and current date/time.
     run: uname -a; date
-
-  config:
-    desc: Upload/test config file.
-    upload:
-      - src: ./$CONFIG
-        dst: /tmp/
-    run: test -f /tmp/$CONFIG
-
-  ps:
-    desc: List running Docker containers
-    run: sudo docker ps | grep $NAME
-
-  pull:
-    desc: Pull git repository
-    script: ./scripts/docker-pull.sh
 
   upload:
     desc: Upload this repository
@@ -68,9 +55,40 @@ commands:
     desc: List Docker image
     run: sudo docker images | grep $IMAGE
 
+  config:
+    desc: Upload/test config file.
+    upload:
+      - src: ./$CONFIG
+        dst: /tmp/
+    run: test -f /tmp/$CONFIG
+
+  # pull:
+  #   desc: Pull git repository
+  #   script: ./scripts/docker-pull.sh
+
+  stop:
+    desc: Stop Docker container
+    run: sudo docker stop $NAME || exit 0
+
+  rm:
+    desc: Remove Docker container
+    run: sudo docker rm $NAME || exit 0
+
+  start:
+    desc: Start a stopped Docker container
+    run: sudo docker start $NAME || exit 0
+
   run:
     desc: Run Docker container
     script: ./scripts/docker-run.sh
+
+  restart:
+    desc: Restart Docker container
+    run: sudo docker restart $NAME || exit 0
+
+  ps:
+    desc: List running Docker containers
+    run: sudo docker ps | grep $NAME
 
   logs:
     desc: Docker logs
@@ -84,22 +102,6 @@ commands:
     desc: Application health check
     run: curl localhost:$HOST_PORT
 
-  stop:
-    desc: Stop Docker container
-    run: sudo docker stop $NAME || exit 0
-
-  start:
-    desc: Start a stopped Docker container
-    run: sudo docker start $NAME || exit 0
-
-  restart:
-    desc: Restart Docker container
-    run: sudo docker restart $NAME || exit 0
-
-  rm:
-    desc: Remove Docker container
-    run: sudo docker rm $NAME || exit 0
-
   shell:
     desc: Interactive shell on all hosts
     stdin: true
@@ -110,7 +112,7 @@ commands:
     stdin: true
     run: docker exec -i $NAME bash
 
-targets:
+targets: # Aliases to run multiple commands at once
   deploy:
     #- pull
     - upload
