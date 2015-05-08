@@ -11,7 +11,7 @@ Stack Up is a simple deployment tool that performs given set of commands on mult
 
 `sup` picks up `Supfile` config file (YAML) from the current directory (the same way as `make` picks up `Makefile`). See [example Supfile](./example/Supfile).
 
-[![Sup](https://asciinema.org/a/19658.png)](https://asciinema.org/a/19658?autoplay=1)
+[![Sup](./example/asciinema.gif)](https://asciinema.org/a/19742?autoplay=1)
 
 # Installation
 
