@@ -11,11 +11,11 @@ Stack Up is a simple deployment tool that performs given set of commands on mult
 
 `sup` picks up `Supfile` config file (YAML) from the current directory (the same way as `make` picks up `Makefile`). See [example Supfile](./example/Supfile).
 
-[![Sup](https://github.com/pressly/stackup/blob/gif/asciinema.gif?raw=true)](https://asciinema.org/a/19742?autoplay=1)
+[![Sup](https://github.com/pressly/sup/blob/gif/asciinema.gif?raw=true)](https://asciinema.org/a/19742?autoplay=1)
 
 # Installation
 
-    $ go get github.com/pressly/stackup/cmd/sup
+    $ go get github.com/pressly/sup/cmd/sup
 
 # License
 Stack Up is licensed under the [MIT License](./LICENSE).
