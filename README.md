@@ -17,5 +17,11 @@ Stack Up is a simple deployment tool that performs given set of commands on mult
 
     $ go get github.com/pressly/sup/cmd/sup
 
+# Development
+
+    $ clone it..
+    $ make deps
+    $ make build
+
 # License
 Stack Up is licensed under the [MIT License](./LICENSE).

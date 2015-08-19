@@ -4,11 +4,11 @@ import (
 	"log"
 	"os"
 
-	"github.com/pressly/stackup"
+	"github.com/pressly/sup"
 )
 
 // usage prints help for an arg and exits.
-func usage(conf *stackup.Supfile, arg int) {
+func usage(conf *sup.Supfile, arg int) {
 	log.Println("Usage: sup <network> <target/command>\n")
 	switch arg {
 	case 1:
@@ -41,8 +41,8 @@ func usage(conf *stackup.Supfile, arg int) {
 
 // parseArgs parses os.Args and returns network and commands to be run.
 // On error, it prints usage and exits.
-func parseArgsOrDie(conf *stackup.Supfile) (*stackup.Network, []*stackup.Command) {
-	var commands []*stackup.Command
+func parseArgsOrDie(conf *sup.Supfile) (*sup.Network, []*sup.Command) {
+	var commands []*sup.Command
 
 	// Check for the first argument first
 	if len(os.Args) < 2 {
@@ -102,7 +102,7 @@ func parseArgsOrDie(conf *stackup.Supfile) (*stackup.Network, []*stackup.Command
 func main() {
 	// Parse configuration file in current directory.
 	// TODO: -f flag to pass custom file.
-	conf, err := stackup.NewSupfile("./Supfile")
+	conf, err := sup.NewSupfile("./Supfile")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -111,7 +111,7 @@ func main() {
 	network, commands := parseArgsOrDie(conf)
 
 	// Create new Stackup app.
-	app, err := stackup.New(conf)
+	app, err := sup.New(conf)
 	if err != nil {
 		log.Fatal(err)
 	}

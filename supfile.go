@@ -1,9 +1,9 @@
-package stackup
+package sup
 
 import (
 	"io/ioutil"
 
-	"gopkg.in/yaml.v1"
+	"gopkg.in/yaml.v2"
 )
 
 // Supfile represents the Stackup configuration YAML file.

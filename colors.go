@@ -1,4 +1,4 @@
-package stackup
+package sup
 
 var (
 	Colors = []string{

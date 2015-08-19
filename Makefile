@@ -16,7 +16,7 @@ build_pkgs:
 
 test:
 	go test
-	cd example && ../bin/sup local test
+	cd ./example && ../bin/sup local test
 
 install: build
 	go install ./...
@@ -24,3 +24,8 @@ install: build
 clean:
 	@rm -rf ./bin
 
+deps:
+	@glock sync -n github.com/pressly/sup < Glockfile
+
+update_deps:
+	@glock save -n github.com/pressly/sup > Glockfile
