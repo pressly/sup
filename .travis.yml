@@ -7,7 +7,7 @@ go:
 
 install:
 - go get -u github.com/pressly/glock
-- glock sync -n github.com/pressly/sup < Glockfile
+- make deps
 - make build
 
 script:
