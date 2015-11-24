@@ -3,6 +3,8 @@ go:
 - 1.5
 
 install:
+- go get -u github.com/pressly/glock
+- glock sync -n github.com/pressly/sup < Glockfile
 - make build
 
 script:
