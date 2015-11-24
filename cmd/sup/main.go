@@ -1,10 +1,15 @@
 package main
 
 import (
+	"flag"
 	"log"
 	"os"
 
 	"github.com/pressly/sup"
+)
+
+var (
+	supfile = flag.String("f", "./Supfile", "custom path to Supfile")
 )
 
 // usage prints help for an arg and exits.
@@ -100,9 +105,9 @@ func parseArgsOrDie(conf *sup.Supfile) (*sup.Network, []*sup.Command) {
 }
 
 func main() {
-	// Parse configuration file in current directory.
-	// TODO: -f flag to pass custom file.
-	conf, err := sup.NewSupfile("./Supfile")
+	flag.Parse()
+
+	conf, err := sup.NewSupfile(*supfile)
 	if err != nil {
 		log.Fatal(err)
 	}
