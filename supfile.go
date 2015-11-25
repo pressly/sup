@@ -1,6 +1,7 @@
 package sup
 
 import (
+	"errors"
 	"io/ioutil"
 
 	"gopkg.in/yaml.v2"
@@ -12,6 +13,7 @@ type Supfile struct {
 	Commands map[string]Command  `yaml:"commands"`
 	Targets  map[string][]string `yaml:"targets"`
 	Env      map[string]string   `yaml:"env"`
+	Version  string              `yaml:"version"`
 }
 
 // Network is group of hosts with extra custom env vars.
@@ -51,5 +53,19 @@ func NewSupfile(file string) (*Supfile, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	switch conf.Version {
+	case "", "0.1":
+		for _, cmd := range conf.Commands {
+			if cmd.RunOnce {
+				return nil, errors.New("command.run_once is not supported in Supfile version 0.1")
+			}
+		}
+	case "0.2":
+		// latest; skip
+	default:
+		return nil, errors.New("unsupported version, please update sup by `go get -u github.com/pressly/sup`")
+	}
+
 	return &conf, nil
 }
