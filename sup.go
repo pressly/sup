@@ -7,7 +7,7 @@ import (
 	"log"
 	"os"
 	"strings"
-	"time"
+	"sync"
 
 	"github.com/pressly/prefixer"
 	"golang.org/x/crypto/ssh"
@@ -23,6 +23,9 @@ func New(conf *Supfile) (*Stackup, error) {
 	}, nil
 }
 
+// Run runs set of commands on multiple hosts defined by network sequentially.
+// TODO: This megamoth method needs a big refactor and should be split
+//       to multiple smaller methods.
 func (sup *Stackup) Run(network *Network, commands ...*Command) error {
 	if len(commands) == 0 {
 		return errors.New("no commands to be run")
@@ -77,7 +80,7 @@ func (sup *Stackup) Run(network *Network, commands ...*Command) error {
 		clients = append(clients, c)
 	}
 
-	// Run command or run multiple commands defined by target sequentally.
+	// Run command or run multiple commands defined by target sequentially.
 	for _, cmd := range commands {
 		// Translate command into task(s).
 		tasks, err := TasksFromConfigCommand(cmd, env)
@@ -89,20 +92,42 @@ func (sup *Stackup) Run(network *Network, commands ...*Command) error {
 		for _, task := range tasks {
 
 			var writers []io.Writer
+			var wg sync.WaitGroup
 
 			// Run task in parallel.
 			for i, c := range clients {
 				padding := strings.Repeat(" ", paddingLen-(len(c.Prefix())))
 				color := Colors[i%len(Colors)]
-
 				prefix := color + padding + c.Prefix() + " | "
+
 				err := c.Run(task)
 				if err != nil {
 					log.Fatalf("%sexit %v", prefix, err)
 				}
 
-				// Copy over tasks's STDOUT.
+				// Wait for each client to finish the command.
+				wg.Add(1)
 				go func(c Client) {
+					defer wg.Done()
+					if err := c.Wait(); err != nil {
+						//TODO: Handle the SSH ExitError in ssh pkg
+						e, ok := err.(*ssh.ExitError)
+						if ok && e.ExitStatus() != 15 {
+							// TODO: Prefix should be with color.
+							// TODO: Store all the errors, and print them after Wait().
+							fmt.Fprintf(os.Stderr, "%s | exit %v\n", c.Prefix(), e.ExitStatus())
+							os.Exit(e.ExitStatus())
+						}
+						// TODO: Prefix should be with color.
+						fmt.Fprintf(os.Stderr, "%s | %v\n", c.Prefix(), err)
+						os.Exit(1)
+					}
+				}(c)
+
+				// Copy over tasks's STDOUT.
+				wg.Add(1)
+				go func(c Client) {
+					defer wg.Done()
 					switch t := c.(type) {
 					case *SSHClient:
 						_, err := io.Copy(os.Stdout, prefixer.New(t.RemoteStdout, prefix))
@@ -120,7 +145,9 @@ func (sup *Stackup) Run(network *Network, commands ...*Command) error {
 				}(c)
 
 				// Copy over tasks's STDERR.
+				wg.Add(1)
 				go func(c Client) {
+					defer wg.Done()
 					switch t := c.(type) {
 					case *SSHClient:
 						_, err := io.Copy(os.Stderr, prefixer.New(t.RemoteStderr, prefix))
@@ -157,27 +184,9 @@ func (sup *Stackup) Run(network *Network, commands ...*Command) error {
 				}
 			}
 
-			// Wait for all clients to finish the task.
-			for _, c := range clients {
-				if err := c.Wait(); err != nil {
-					//TODO: Handle the SSH ExitError in ssh pkg
-					e, ok := err.(*ssh.ExitError)
-					if ok && e.ExitStatus() != 15 {
-						// TODO: Prefix should be with color.
-						// TODO: Store all the errors, and print them after Wait().
-						fmt.Fprintf(os.Stderr, "%s | exit %v\n", c.Prefix(), e.ExitStatus())
-						os.Exit(e.ExitStatus())
-					}
-					// TODO: Prefix should be with color.
-					fmt.Fprintf(os.Stderr, "%s | %v\n", c.Prefix(), err)
-					os.Exit(1)
-				}
-			}
+			wg.Wait()
 		}
 	}
 
-	//TODO: We should wait for all io.Copy() goroutines.
-	//Ugly hack for now:
-	time.Sleep(1000 * time.Millisecond)
 	return nil
 }
