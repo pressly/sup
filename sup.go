@@ -91,13 +91,33 @@ func (sup *Stackup) Run(network *Network, commands ...*Command) error {
 		// Run tasks sequentally.
 		for _, task := range tasks {
 
+			var taskClients chan Client
+			if task.RunOnce {
+				taskClients = make(chan Client, 1)
+				// Range over one client - range over map for randomness.
+				for _, client := range clients {
+					taskClients <- client
+					break
+				}
+				close(taskClients)
+			} else {
+				// Range over all clients.
+				taskClients = make(chan Client, len(clients))
+				for _, client := range clients {
+					taskClients <- client
+				}
+				close(taskClients)
+			}
+
 			var writers []io.Writer
 			var wg sync.WaitGroup
+			i := 0
 
-			// Run task in parallel.
-			for i, c := range clients {
+			// Run tasks on the provided clients.
+			for c := range taskClients {
 				padding := strings.Repeat(" ", paddingLen-(len(c.Prefix())))
 				color := Colors[i%len(Colors)]
+				i++
 				prefix := color + padding + c.Prefix() + " | "
 
 				err := c.Run(task)

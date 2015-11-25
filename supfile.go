@@ -22,12 +22,15 @@ type Network struct {
 
 // Command represents command(s) to be run remotely.
 type Command struct {
-	Name   string   `yaml:-`        // Command name.
-	Desc   string   `yaml:"desc"`   // Command description.
-	Run    string   `yaml:"run`     // Command(s) to be run remotelly.
-	Script string   `yaml:"script"` // Load command(s) from script and run it remotelly.
-	Upload []Upload `yaml:"upload"` // See below.
-	Stdin  bool     `yaml:"stdin"`  // Attach localhost STDOUT to remote commands' STDIN?
+	Name    string   `yaml:-`          // Command name.
+	Desc    string   `yaml:"desc"`     // Command description.
+	Run     string   `yaml:"run`       // Command(s) to be run remotelly.
+	Script  string   `yaml:"script"`   // Load command(s) from script and run it remotelly.
+	Upload  []Upload `yaml:"upload"`   // See below.
+	Stdin   bool     `yaml:"stdin"`    // Attach localhost STDOUT to remote commands' STDIN?
+	Max     int      `yaml:"max"`      // Max number of clients processing a task in parallel.
+	RunOnce bool     `yaml:"run_once"` // The command should be run once only.
+	// TODO: RunSerial int      `yaml:"run_serial"` // Max number of clients processing the command in parallel.
 }
 
 // Upload represents file copy operation from localhost Src path to Dst
