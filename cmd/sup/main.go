@@ -13,7 +13,10 @@ import (
 )
 
 var (
-	supfile             = flag.String("f", "./Supfile", "custom path to Supfile")
+	supfile          = flag.String("f", "./Supfile", "custom path to Supfile")
+	showVersionShort = flag.Bool("v", false, "print version")
+	showVersionLong  = flag.Bool("version", false, "print version")
+
 	ErrCmd              = errors.New("Usage: sup [-f <Supfile>] <network> <target/command>")
 	ErrUnknownNetwork   = errors.New("Unknown network")
 	ErrNetworkNoHosts   = errors.New("No hosts for a given network")
@@ -123,6 +126,11 @@ func parseArgs(conf *sup.Supfile) (*sup.Network, []*sup.Command, error) {
 
 func main() {
 	flag.Parse()
+
+	if *showVersionShort || *showVersionLong {
+		fmt.Println("0.2")
+		return
+	}
 
 	conf, err := sup.NewSupfile(*supfile)
 	if err != nil {
