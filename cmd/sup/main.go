@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"regexp"
 	"strings"
 	"text/tabwriter"
 
@@ -16,8 +17,9 @@ var (
 	supfile          = flag.String("f", "./Supfile", "custom path to Supfile")
 	showVersionShort = flag.Bool("v", false, "print version")
 	showVersionLong  = flag.Bool("version", false, "print version")
+	onlyHosts        = flag.String("only", "", "filter hosts with regexp")
 
-	ErrCmd              = errors.New("Usage: sup [-f <Supfile>] <network> <target/command>")
+	ErrCmd              = errors.New("Usage: sup [-f <Supfile>] [--only host1] <network> <target/command>")
 	ErrUnknownNetwork   = errors.New("Unknown network")
 	ErrNetworkNoHosts   = errors.New("No hosts for a given network")
 	ErrTarget           = errors.New("Unknown target")
@@ -141,6 +143,25 @@ func main() {
 	network, commands, err := parseArgs(conf)
 	if err != nil {
 		log.Fatal(err)
+	}
+
+	// --only option to filter hosts
+	if *onlyHosts != "" {
+		expr, err := regexp.CompilePOSIX(*onlyHosts)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		var hosts []string
+		for _, host := range network.Hosts {
+			if expr.MatchString(host) {
+				hosts = append(hosts, host)
+			}
+		}
+		if len(hosts) == 0 {
+			log.Fatal(fmt.Errorf("no hosts match '%v' regexp", *onlyHosts))
+		}
+		network.Hosts = hosts
 	}
 
 	// Create new Stackup app.
