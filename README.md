@@ -3,7 +3,7 @@ Stack Up
 
 Stack Up is a simple deployment tool that performs given set of commands on multiple hosts in parallel. It reads Supfile, a YAML configuration file, which defines networks (groups of hosts), commands and targets.
 
-    $ sup <network> <target/command>
+    $ sup [-f Supfile] <network> <target/command>
 
 - `<network>` - A group of hosts, eg. `dev`, `stg` and `prod`. In this case, `prod` can map to `prod1.example.com`, `prod2.example.com` and `prod3.example.com` hosts.
 - `<command>` - A named command (or set of commands) to be run remotely.
@@ -15,7 +15,7 @@ Stack Up is a simple deployment tool that performs given set of commands on mult
 
 # Installation
 
-    $ go get github.com/pressly/sup/cmd/sup
+    $ go get -u github.com/pressly/sup/cmd/sup
 
 # Development
 
