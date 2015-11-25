@@ -207,6 +207,7 @@ func (c *SSHClient) Close() error {
 
 	err := c.Conn.Close()
 	c.ConnOpened = false
+	c.Running = false
 
 	return err
 }

@@ -10,8 +10,10 @@ import (
 
 // Task represents a set of commands to be run.
 type Task struct {
-	Run   string
-	Input io.Reader
+	Run     string
+	Input   io.Reader
+	RunOnce bool
+	// TODO: RunSerial int
 }
 
 func TasksFromConfigCommand(cmd *Command, env string) ([]*Task, error) {
@@ -39,7 +41,9 @@ func TasksFromConfigCommand(cmd *Command, env string) ([]*Task, error) {
 		}
 
 		task := &Task{
-			Run: string(data),
+			Run:     string(data),
+			RunOnce: cmd.RunOnce,
+			// TODO: RunSerial: cmd.RunSerial,
 		}
 		if cmd.Stdin {
 			task.Input = os.Stdin
@@ -51,7 +55,9 @@ func TasksFromConfigCommand(cmd *Command, env string) ([]*Task, error) {
 	// Command?
 	if cmd.Run != "" {
 		task := &Task{
-			Run: cmd.Run,
+			Run:     cmd.Run,
+			RunOnce: cmd.RunOnce,
+			// TODO: RunSerial: cmd.RunSerial,
 		}
 		if cmd.Stdin {
 			task.Input = os.Stdin
