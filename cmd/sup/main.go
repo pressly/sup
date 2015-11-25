@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 	"text/tabwriter"
 
 	"github.com/pressly/sup"
@@ -13,7 +14,7 @@ import (
 
 var (
 	supfile             = flag.String("f", "./Supfile", "custom path to Supfile")
-	ErrCmd              = errors.New("Usage: sup <network> <target/command>")
+	ErrCmd              = errors.New("Usage: sup [-f <Supfile>] <network> <target/command>")
 	ErrUnknownNetwork   = errors.New("Unknown network")
 	ErrNetworkNoHosts   = errors.New("No hosts for a given network")
 	ErrTarget           = errors.New("Unknown target")
@@ -22,11 +23,11 @@ var (
 
 func networkUsage(conf *sup.Supfile) {
 	w := &tabwriter.Writer{}
-	w.Init(os.Stderr, 4, 4, 0, '\t', 0)
+	w.Init(os.Stderr, 4, 4, 2, ' ', 0)
 	defer w.Flush()
 
 	// <network> missing, print available hosts.
-	fmt.Fprintf(w, "Available networks (from %v):\n", *supfile)
+	fmt.Fprintln(w, "Networks:\t")
 	for name, network := range conf.Networks {
 		fmt.Fprintf(w, "- %v\n", name)
 		for _, host := range network.Hosts {
@@ -38,22 +39,19 @@ func networkUsage(conf *sup.Supfile) {
 
 func targetUsage(conf *sup.Supfile) {
 	w := &tabwriter.Writer{}
-	w.Init(os.Stderr, 4, 4, 0, '\t', 0)
+	w.Init(os.Stderr, 4, 4, 2, ' ', 0)
 	defer w.Flush()
 
 	// <target/command> not found or missing,
 	// print available targets/commands.
-	fmt.Fprintf(w, "Available targets (from %v):\n", *supfile)
+	fmt.Fprintln(w, "Targets:\t")
 	for name, commands := range conf.Targets {
-		fmt.Fprintf(w, "- %v\n", name)
-		for _, cmd := range commands {
-			fmt.Fprintf(w, "\t%v\n", cmd)
-		}
+		fmt.Fprintf(w, "- %v\t%v\n", name, strings.Join(commands, ", "))
 	}
-	fmt.Fprintln(w)
-	fmt.Fprintf(w, "Available commands (from %v):\n", *supfile)
+	fmt.Fprintln(w, "\t")
+	fmt.Fprintln(w, "Commands:\t")
 	for name, cmd := range conf.Commands {
-		fmt.Fprintf(w, "\t- %v\t%v\n", name, cmd.Desc)
+		fmt.Fprintf(w, "- %v\t%v\n", name, cmd.Desc)
 	}
 	fmt.Fprintln(w)
 }
