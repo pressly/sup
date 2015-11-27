@@ -26,6 +26,8 @@ Stack Up is a simple deployment tool that performs given set of commands on mult
 
 # Demo
 
+Demo using the following [Supfile](./example/Supfile):
+
 [![Sup](https://github.com/pressly/sup/blob/gif/asciinema.gif?raw=true)](https://asciinema.org/a/19742?autoplay=1)
 
 # Development
