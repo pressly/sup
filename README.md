@@ -3,6 +3,18 @@ Stack Up
 
 Stack Up is a simple deployment tool that performs given set of commands on multiple hosts in parallel. It reads Supfile, a YAML configuration file, which defines networks (groups of hosts), commands and targets.
 
+# Demo
+
+Demo using the following [Supfile](./example/Supfile):
+
+[![Sup](https://github.com/pressly/sup/blob/gif/asciinema.gif?raw=true)](https://asciinema.org/a/19742?autoplay=1)
+
+# Installation
+
+    $ go get -u github.com/pressly/sup/cmd/sup
+
+# Usage
+
     $ sup [-f Supfile] [--only <regexp>] <network> <target/command>
 
 | command/option    | description                                                                                          |
@@ -20,16 +32,6 @@ Stack Up is a simple deployment tool that performs given set of commands on mult
     $ sup --only api1 dev tail-logs
     $ sup -f Supfile.db stg restart
 
-# Installation
-
-    $ go get -u github.com/pressly/sup/cmd/sup
-
-# Demo
-
-Demo using the following [Supfile](./example/Supfile):
-
-[![Sup](https://github.com/pressly/sup/blob/gif/asciinema.gif?raw=true)](https://asciinema.org/a/19742?autoplay=1)
-
 # Development
 
     fork it..
@@ -38,4 +40,5 @@ Demo using the following [Supfile](./example/Supfile):
     $ make build
 
 # License
+
 Licensed under the [MIT License](./LICENSE).
