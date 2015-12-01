@@ -23,7 +23,7 @@ func TasksFromConfigCommand(cmd *Command, env string) ([]*Task, error) {
 	for _, upload := range cmd.Upload {
 		task := &Task{
 			Run:   RemoteTarCommand(upload.Dst),
-			Input: NewTarStreamReader(upload.Src, env),
+			Input: NewTarStreamReader(upload.Src, upload.Exc, env),
 		}
 
 		tasks = append(tasks, task)

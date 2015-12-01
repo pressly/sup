@@ -40,6 +40,7 @@ type Command struct {
 type Upload struct {
 	Src string `yaml:"src"`
 	Dst string `yaml:"dst"`
+	Exc string `yaml:"exclude"`
 }
 
 // NewSupfile parses configuration file and returns Supfile or error.
