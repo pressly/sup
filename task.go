@@ -13,6 +13,7 @@ type Task struct {
 	Run     string
 	Input   io.Reader
 	RunOnce bool
+	Local   bool
 	// TODO: RunSerial int
 }
 
@@ -43,6 +44,7 @@ func TasksFromConfigCommand(cmd *Command, env string) ([]*Task, error) {
 		task := &Task{
 			Run:     string(data),
 			RunOnce: cmd.RunOnce,
+			Local:   cmd.Local,
 			// TODO: RunSerial: cmd.RunSerial,
 		}
 		if cmd.Stdin {
@@ -57,6 +59,7 @@ func TasksFromConfigCommand(cmd *Command, env string) ([]*Task, error) {
 		task := &Task{
 			Run:     cmd.Run,
 			RunOnce: cmd.RunOnce,
+			Local:   cmd.Local,
 			// TODO: RunSerial: cmd.RunSerial,
 		}
 		if cmd.Stdin {

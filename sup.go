@@ -92,21 +92,36 @@ func (sup *Stackup) Run(network *Network, commands ...*Command) error {
 		for _, task := range tasks {
 
 			var taskClients chan Client
-			if task.RunOnce {
+
+			if task.Local {
 				taskClients = make(chan Client, 1)
-				// Range over one client - range over map for randomness.
-				for _, client := range clients {
-					taskClients <- client
-					break
+				local := &LocalhostClient{
+					Env: env + `export SUP_HOST="localhost";`,
 				}
+
+				if err := local.Connect("localhost"); err != nil {
+					log.Fatal(err)
+				}
+
+				taskClients <- local
 				close(taskClients)
 			} else {
-				// Range over all clients.
-				taskClients = make(chan Client, len(clients))
-				for _, client := range clients {
-					taskClients <- client
+				if task.RunOnce {
+					taskClients = make(chan Client, 1)
+					// Range over one client - range over map for randomness.
+					for _, client := range clients {
+						taskClients <- client
+						break
+					}
+					close(taskClients)
+				} else {
+					// Range over all clients.
+					taskClients = make(chan Client, len(clients))
+					for _, client := range clients {
+						taskClients <- client
+					}
+					close(taskClients)
 				}
-				close(taskClients)
 			}
 
 			var writers []io.Writer
