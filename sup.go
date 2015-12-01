@@ -51,7 +51,7 @@ func (sup *Stackup) Run(network *Network, commands ...*Command) error {
 		if host == "localhost" { // LocalhostClient
 
 			local := &LocalhostClient{
-				Env: env,
+				Env: env + `export SUP_HOST="` + host + `";`,
 			}
 			if err := local.Connect(host); err != nil {
 				log.Fatal(err)
@@ -62,7 +62,7 @@ func (sup *Stackup) Run(network *Network, commands ...*Command) error {
 		} else { // SSHClient
 
 			remote := &SSHClient{
-				Env: env,
+				Env: env + `export SUP_HOST="` + host + `";`,
 			}
 			if err := remote.Connect(host); err != nil {
 				log.Fatal(err)
