@@ -92,6 +92,14 @@ func parseArgs(conf *sup.Supfile) (*sup.Network, []*sup.Command, error) {
 		return nil, nil, ErrCmd
 	}
 
+	// In case of the network.Env needs an initialization
+	if network.Env == nil {
+		network.Env = make(map[string]string)
+	}
+
+	// Added default env variable with current network
+	network.Env["SUP_NETWORK"] = args[0]
+
 	// Does the <target/command> exist?
 	target, isTarget := conf.Targets[args[1]]
 	if isTarget {
