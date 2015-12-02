@@ -103,6 +103,11 @@ func (sup *Stackup) Run(network *Network, commands ...*Command) error {
 					log.Fatal(err)
 				}
 
+				len := len(local.Prefix())
+				if len > paddingLen {
+					paddingLen = len
+				}
+
 				taskClients <- local
 				close(taskClients)
 			} else {
