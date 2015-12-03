@@ -145,6 +145,24 @@ func (sup *Stackup) Run(network *Network, commands ...*Command) error {
 					}
 				}(c)
 
+				// Copy over tasks's STDERR.
+				wg.Add(1)
+				go func(c Client) {
+					defer wg.Done()
+					switch t := c.(type) {
+					case *SSHClient:
+						_, err := io.Copy(os.Stderr, prefixer.New(t.RemoteStderr, prefix))
+						if err != nil && err != io.EOF {
+							log.Printf("%sSTDERR: %v", t.Prefix(), err)
+						}
+					case *LocalhostClient:
+						_, err := io.Copy(os.Stderr, prefixer.New(t.Stderr, prefix))
+						if err != nil && err != io.EOF {
+							log.Printf("%sSTDERR: %v", t.Prefix(), err)
+						}
+					}
+				}(c)
+
 				// Wait for each client to finish the command.
 				wg.Add(1)
 				go func(c Client) {
@@ -161,24 +179,6 @@ func (sup *Stackup) Run(network *Network, commands ...*Command) error {
 						// TODO: Prefix should be with color.
 						fmt.Fprintf(os.Stderr, "%s | %v\n", c.Prefix(), err)
 						os.Exit(1)
-					}
-				}(c)
-
-				// Copy over tasks's STDERR.
-				wg.Add(1)
-				go func(c Client) {
-					defer wg.Done()
-					switch t := c.(type) {
-					case *SSHClient:
-						_, err := io.Copy(os.Stderr, prefixer.New(t.RemoteStderr, prefix))
-						if err != nil && err != io.EOF {
-							log.Printf("%sSTDERR: %v", t.Prefix(), err)
-						}
-					case *LocalhostClient:
-						_, err := io.Copy(os.Stderr, prefixer.New(t.Stderr, prefix))
-						if err != nil && err != io.EOF {
-							log.Printf("%sSTDERR: %v", t.Prefix(), err)
-						}
 					}
 				}(c)
 
