@@ -138,7 +138,7 @@ func main() {
 	flag.Parse()
 
 	if *showVersionShort || *showVersionLong {
-		fmt.Println("0.2")
+		fmt.Println(sup.VERSION)
 		return
 	}
 

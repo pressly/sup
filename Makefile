@@ -6,13 +6,16 @@ help:
 	@echo "install: Install binary."
 	@echo "clean:   Clean up."
 
-build: build_pkgs
+build:
 	@mkdir -p ./bin
 	@rm -f ./bin/*
 	go build -o ./bin/sup ./cmd/sup
 
-build_pkgs:
-	go build ./...
+dist:
+	@mkdir -p ./bin
+	@rm -f ./bin/*
+	GOOS=darwin GOARCH=amd64 go build -o ./bin/sup-darwin64 ./cmd/sup
+	GOOS=linux GOARCH=amd64 go build -o ./bin/sup-linux64 ./cmd/sup
 
 test:
 	go test
