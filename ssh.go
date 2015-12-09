@@ -122,8 +122,6 @@ func (c *SSHClient) Connect(host string) error {
 // TODO: Split Signers to its own method.
 func (c *SSHClient) ConnectWith(host string, dialer SSHDialFunc) error {
 
-	fmt.Println("connecting", host)
-
 	if c.ConnOpened {
 		return fmt.Errorf("Already connected")
 	}
@@ -210,7 +208,6 @@ func (c *SSHClient) Wait() error {
 
 // DialThrough will create a new connection from the ssh server sc is connected to. DialThrough is an SSHDialer.
 func (sc *SSHClient) DialThrough(net, addr string, config *ssh.ClientConfig) (*ssh.Client, error) {
-	fmt.Println("Dialing", net, addr)
 	conn, err := sc.Conn.Dial(net, addr)
 	if err != nil {
 		return nil, err
