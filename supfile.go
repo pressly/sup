@@ -18,8 +18,9 @@ type Supfile struct {
 
 // Network is group of hosts with extra custom env vars.
 type Network struct {
-	Hosts []string          `yaml:"hosts"`
-	Env   map[string]string `yaml:"env"`
+	Bastion string            `yaml:"bastion"` // Jump host for the environment
+	Hosts   []string          `yaml:"hosts"`
+	Env     map[string]string `yaml:"env"`
 }
 
 // Command represents command(s) to be run remotely.
