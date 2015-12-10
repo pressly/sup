@@ -18,15 +18,16 @@ type Supfile struct {
 
 // Network is group of hosts with extra custom env vars.
 type Network struct {
-	Hosts []string          `yaml:"hosts"`
-	Env   map[string]string `yaml:"env"`
+	Bastion string            `yaml:"bastion"` // Jump host for the environment
+	Hosts   []string          `yaml:"hosts"`
+	Env     map[string]string `yaml:"env"`
 }
 
 // Command represents command(s) to be run remotely.
 type Command struct {
-	Name    string   `yaml:-`          // Command name.
+	Name    string   `yaml:"-"`        // Command name.
 	Desc    string   `yaml:"desc"`     // Command description.
-	Run     string   `yaml:"run`       // Command(s) to be run remotelly.
+	Run     string   `yaml:"run"`      // Command(s) to be run remotelly.
 	Script  string   `yaml:"script"`   // Load command(s) from script and run it remotelly.
 	Upload  []Upload `yaml:"upload"`   // See below.
 	Stdin   bool     `yaml:"stdin"`    // Attach localhost STDOUT to remote commands' STDIN?

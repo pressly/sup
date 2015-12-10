@@ -108,20 +108,30 @@ func initAuthMethod() {
 	authMethod = ssh.PublicKeys(signers...)
 }
 
+// SSHDialFunc can dial an ssh server and return a client
+type SSHDialFunc func(net, addr string, config *ssh.ClientConfig) (*ssh.Client, error)
+
 // Connect creates SSH connection to a specified host.
 // It expects the host of the form "[ssh://]host[:port]".
-// TODO: Split Signers to its own method.
 func (c *SSHClient) Connect(host string) error {
+	return c.ConnectWith(host, ssh.Dial)
+}
+
+// ConnectWith creates a SSH connection to a specified host. It will use dialer to establish the
+// connection.
+// TODO: Split Signers to its own method.
+func (c *SSHClient) ConnectWith(host string, dialer SSHDialFunc) error {
+
 	if c.ConnOpened {
 		return fmt.Errorf("Already connected")
 	}
+
+	initAuthMethodOnce.Do(initAuthMethod)
 
 	err := c.parseHost(host)
 	if err != nil {
 		return err
 	}
-
-	initAuthMethodOnce.Do(initAuthMethod)
 
 	config := &ssh.ClientConfig{
 		User: c.User,
@@ -130,10 +140,11 @@ func (c *SSHClient) Connect(host string) error {
 		},
 	}
 
-	c.Conn, err = ssh.Dial("tcp", c.Host, config)
+	c.Conn, err = dialer("tcp", c.Host, config)
 	if err != nil {
 		return ErrConnect{c.User, c.Host, err.Error()}
 	}
+
 	c.ConnOpened = true
 
 	return nil
@@ -193,6 +204,20 @@ func (c *SSHClient) Wait() error {
 	c.SessOpened = false
 
 	return err
+}
+
+// DialThrough will create a new connection from the ssh server sc is connected to. DialThrough is an SSHDialer.
+func (sc *SSHClient) DialThrough(net, addr string, config *ssh.ClientConfig) (*ssh.Client, error) {
+	conn, err := sc.Conn.Dial(net, addr)
+	if err != nil {
+		return nil, err
+	}
+	c, chans, reqs, err := ssh.NewClientConn(conn, addr, config)
+	if err != nil {
+		return nil, err
+	}
+	return ssh.NewClient(c, chans, reqs), nil
+
 }
 
 // Close closes the underlying SSH connection and session.
