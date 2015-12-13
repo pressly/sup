@@ -54,7 +54,7 @@ func (sup *Stackup) Run(network *Network, commands ...*Command) error {
 	if network.Bastion != "" {
 		bastion = &SSHClient{}
 		if err := bastion.Connect(network.Bastion); err != nil {
-			log.Fatal(err)
+			return err
 		}
 	}
 
@@ -64,10 +64,10 @@ func (sup *Stackup) Run(network *Network, commands ...*Command) error {
 		if host == "localhost" { // LocalhostClient
 
 			local := &LocalhostClient{
-				Env: env + `export SUP_HOST="` + host + `";`,
+				env: env + `export SUP_HOST="` + host + `";`,
 			}
 			if err := local.Connect(host); err != nil {
-				log.Fatal(err)
+				return err
 			}
 
 			c = local
@@ -75,7 +75,7 @@ func (sup *Stackup) Run(network *Network, commands ...*Command) error {
 		} else { // SSHClient
 
 			remote := &SSHClient{
-				Env: env + `export SUP_HOST="` + host + `";`,
+				env: env + `export SUP_HOST="` + host + `";`,
 			}
 
 			var err error
@@ -85,7 +85,7 @@ func (sup *Stackup) Run(network *Network, commands ...*Command) error {
 				err = remote.Connect(host)
 			}
 			if err != nil {
-				log.Fatal(err)
+				return err
 			}
 			defer remote.Close()
 
@@ -105,7 +105,7 @@ func (sup *Stackup) Run(network *Network, commands ...*Command) error {
 		// Translate command into task(s).
 		tasks, err := TasksFromConfigCommand(cmd, env)
 		if err != nil {
-			log.Fatalf("TasksFromConfigCommand(): %s", err)
+			return fmt.Errorf("TasksFromConfigCommand(): %s", err)
 		}
 
 		// Run tasks sequentally.
@@ -149,19 +149,11 @@ func (sup *Stackup) Run(network *Network, commands ...*Command) error {
 				wg.Add(1)
 				go func(c Client) {
 					defer wg.Done()
-					switch t := c.(type) {
-					case *SSHClient:
-						_, err := io.Copy(os.Stdout, prefixer.New(t.RemoteStdout, prefix))
-						if err != nil && err != io.EOF {
-							// TODO: io.Copy() should not return io.EOF at all.
-							// Upstream bug? Or prefixer.WriteTo() bug?
-							log.Printf("%sSTDOUT: %v", t.Prefix(), err)
-						}
-					case *LocalhostClient:
-						_, err := io.Copy(os.Stdout, prefixer.New(t.Stdout, prefix))
-						if err != nil && err != io.EOF {
-							log.Printf("%sSTDOUT: %v", t.Prefix(), err)
-						}
+					_, err := io.Copy(os.Stdout, prefixer.New(c.Stdout(), prefix))
+					if err != nil && err != io.EOF {
+						// TODO: io.Copy() should not return io.EOF at all.
+						// Upstream bug? Or prefixer.WriteTo() bug?
+						log.Printf("%sSTDOUT: %v", c.Prefix(), err)
 					}
 				}(c)
 
@@ -188,26 +180,13 @@ func (sup *Stackup) Run(network *Network, commands ...*Command) error {
 				wg.Add(1)
 				go func(c Client) {
 					defer wg.Done()
-					switch t := c.(type) {
-					case *SSHClient:
-						_, err := io.Copy(os.Stderr, prefixer.New(t.RemoteStderr, prefix))
-						if err != nil && err != io.EOF {
-							log.Printf("%sSTDERR: %v", t.Prefix(), err)
-						}
-					case *LocalhostClient:
-						_, err := io.Copy(os.Stderr, prefixer.New(t.Stderr, prefix))
-						if err != nil && err != io.EOF {
-							log.Printf("%sSTDERR: %v", t.Prefix(), err)
-						}
+					_, err := io.Copy(os.Stderr, prefixer.New(c.Stderr(), prefix))
+					if err != nil && err != io.EOF {
+						log.Printf("%sSTDERR: %v", c.Prefix(), err)
 					}
 				}(c)
 
-				switch t := c.(type) {
-				case *SSHClient:
-					writers = append(writers, t.RemoteStdin)
-				case *LocalhostClient:
-					writers = append(writers, t.Stdin)
-				}
+				writers = append(writers, c.Stdin())
 			}
 
 			// Copy over task's STDIN.

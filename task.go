@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"os"
 )
 
@@ -33,11 +32,11 @@ func TasksFromConfigCommand(cmd *Command, env string) ([]*Task, error) {
 	if cmd.Script != "" {
 		f, err := os.Open(cmd.Script)
 		if err != nil {
-			log.Fatal(err)
+			return nil, err
 		}
 		data, err := ioutil.ReadAll(f)
 		if err != nil {
-			log.Fatal(err)
+			return nil, err
 		}
 
 		task := &Task{

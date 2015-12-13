@@ -16,17 +16,17 @@ import (
 
 // Client is a wrapper over the SSH connection/sessions.
 type SSHClient struct {
-	Conn         *ssh.Client
-	Sess         *ssh.Session
-	User         string
-	Host         string
-	RemoteStdin  io.WriteCloser
-	RemoteStdout io.Reader
-	RemoteStderr io.Reader
-	ConnOpened   bool
-	SessOpened   bool
-	Running      bool
-	Env          string //export FOO="bar"; export BAR="baz";
+	conn         *ssh.Client
+	sess         *ssh.Session
+	user         string
+	host         string
+	remoteStdin  io.WriteCloser
+	remoteStdout io.Reader
+	remoteStderr io.Reader
+	connOpened   bool
+	sessOpened   bool
+	running      bool
+	env          string //export FOO="bar"; export BAR="baz";
 }
 
 type ErrConnect struct {
@@ -41,34 +41,34 @@ func (e ErrConnect) Error() string {
 
 // parseHost parses and normalizes <user>@<host:port> from a given string.
 func (c *SSHClient) parseHost(host string) error {
-	c.Host = host
+	c.host = host
 
 	// Remove extra "ssh://" schema
-	if len(c.Host) > 6 && c.Host[:6] == "ssh://" {
-		c.Host = c.Host[6:]
+	if len(c.host) > 6 && c.host[:6] == "ssh://" {
+		c.host = c.host[6:]
 	}
 
-	if at := strings.Index(c.Host, "@"); at != -1 {
-		c.User = c.Host[:at]
-		c.Host = c.Host[at+1:]
+	if at := strings.Index(c.host, "@"); at != -1 {
+		c.user = c.host[:at]
+		c.host = c.host[at+1:]
 	}
 
 	// Add default user, if not set
-	if c.User == "" {
+	if c.user == "" {
 		u, err := user.Current()
 		if err != nil {
 			return err
 		}
-		c.User = u.Username
+		c.user = u.Username
 	}
 
-	if strings.Index(c.Host, "/") != -1 {
-		return ErrConnect{c.User, c.Host, "unexpected slash in the host URL"}
+	if strings.Index(c.host, "/") != -1 {
+		return ErrConnect{c.user, c.host, "unexpected slash in the host URL"}
 	}
 
 	// Add default port, if not set
-	if strings.Index(c.Host, ":") == -1 {
-		c.Host += ":22"
+	if strings.Index(c.host, ":") == -1 {
+		c.host += ":22"
 	}
 
 	return nil
@@ -121,8 +121,7 @@ func (c *SSHClient) Connect(host string) error {
 // connection.
 // TODO: Split Signers to its own method.
 func (c *SSHClient) ConnectWith(host string, dialer SSHDialFunc) error {
-
-	if c.ConnOpened {
+	if c.connOpened {
 		return fmt.Errorf("Already connected")
 	}
 
@@ -134,81 +133,80 @@ func (c *SSHClient) ConnectWith(host string, dialer SSHDialFunc) error {
 	}
 
 	config := &ssh.ClientConfig{
-		User: c.User,
+		User: c.user,
 		Auth: []ssh.AuthMethod{
 			authMethod,
 		},
 	}
 
-	c.Conn, err = dialer("tcp", c.Host, config)
+	c.conn, err = dialer("tcp", c.host, config)
 	if err != nil {
-		return ErrConnect{c.User, c.Host, err.Error()}
+		return ErrConnect{c.user, c.host, err.Error()}
 	}
-
-	c.ConnOpened = true
+	c.connOpened = true
 
 	return nil
 }
 
-// Run runs the task.Run command remotely on c.Host.
+// Run runs the task.Run command remotely on c.host.
 func (c *SSHClient) Run(task *Task) error {
-	if c.Running {
+	if c.running {
 		return fmt.Errorf("Session already running")
 	}
-	if c.SessOpened {
+	if c.sessOpened {
 		return fmt.Errorf("Session already connected")
 	}
 
-	sess, err := c.Conn.NewSession()
+	sess, err := c.conn.NewSession()
 	if err != nil {
 		return err
 	}
 
-	c.RemoteStdin, err = sess.StdinPipe()
+	c.remoteStdin, err = sess.StdinPipe()
 	if err != nil {
 		return err
 	}
 
-	c.RemoteStdout, err = sess.StdoutPipe()
+	c.remoteStdout, err = sess.StdoutPipe()
 	if err != nil {
 		return err
 	}
 
-	c.RemoteStderr, err = sess.StderrPipe()
+	c.remoteStderr, err = sess.StderrPipe()
 	if err != nil {
 		return err
 	}
 
-	c.Sess = sess
-	c.SessOpened = true
+	c.sess = sess
+	c.sessOpened = true
 
 	// Start the remote command.
-	if err := c.Sess.Start(c.Env + "set -x;" + task.Run); err != nil {
+	if err := c.sess.Start(c.env + "set -x;" + task.Run); err != nil {
 		return ErrTask{task, err.Error()}
 	}
 
-	c.Running = true
+	c.running = true
 	return nil
 }
 
 // Wait waits until the remote command finishes and exits.
 // It closes the SSH session.
 func (c *SSHClient) Wait() error {
-	if !c.Running {
+	if !c.running {
 		return fmt.Errorf("Trying to wait on stopped session")
 	}
 
-	err := c.Sess.Wait()
-	c.Sess.Close()
-	c.Running = false
-	c.SessOpened = false
+	err := c.sess.Wait()
+	c.sess.Close()
+	c.running = false
+	c.sessOpened = false
 
 	return err
 }
 
 // DialThrough will create a new connection from the ssh server sc is connected to. DialThrough is an SSHDialer.
 func (sc *SSHClient) DialThrough(net, addr string, config *ssh.ClientConfig) (*ssh.Client, error) {
-	conn, err := sc.Conn.Dial(net, addr)
+	conn, err := sc.conn.Dial(net, addr)
 	if err != nil {
 		return nil, err
 	}
@@ -222,29 +220,41 @@ func (sc *SSHClient) DialThrough(net, addr string, config *ssh.ClientConfig) (*s
 
 // Close closes the underlying SSH connection and session.
 func (c *SSHClient) Close() error {
-	if c.SessOpened {
-		c.Sess.Close()
-		c.SessOpened = false
+	if c.sessOpened {
+		c.sess.Close()
+		c.sessOpened = false
 	}
-	if !c.ConnOpened {
+	if !c.connOpened {
 		return fmt.Errorf("Trying to close the already closed connection")
 	}
 
-	err := c.Conn.Close()
-	c.ConnOpened = false
-	c.Running = false
+	err := c.conn.Close()
+	c.connOpened = false
+	c.running = false
 
 	return err
 }
 
+func (c *SSHClient) Stdin() io.WriteCloser {
+	return c.remoteStdin
+}
+
+func (c *SSHClient) Stderr() io.Reader {
+	return c.remoteStderr
+}
+
+func (c *SSHClient) Stdout() io.Reader {
+	return c.remoteStdout
+}
+
 func (c *SSHClient) Prefix() string {
-	return c.User + "@" + c.Host
+	return c.user + "@" + c.host
 }
 
 func (c *SSHClient) Write(p []byte) (n int, err error) {
-	return c.RemoteStdin.Write(p)
+	return c.remoteStdin.Write(p)
 }
 
 func (c *SSHClient) WriteClose() error {
-	return c.RemoteStdin.Close()
+	return c.remoteStdin.Close()
 }

@@ -1,6 +1,9 @@
+sudo: false
 language: go
 go:
-- 1.5
+- 1.5.2
+- 1.4.3
+- tip
 
 install:
 - go get -u github.com/pressly/glock
