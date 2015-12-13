@@ -54,7 +54,7 @@ func (sup *Stackup) Run(network *Network, commands ...*Command) error {
 	if network.Bastion != "" {
 		bastion = &SSHClient{}
 		if err := bastion.Connect(network.Bastion); err != nil {
-			log.Fatal(err)
+			return err
 		}
 	}
 
@@ -67,7 +67,7 @@ func (sup *Stackup) Run(network *Network, commands ...*Command) error {
 				env: env + `export SUP_HOST="` + host + `";`,
 			}
 			if err := local.Connect(host); err != nil {
-				log.Fatal(err)
+				return err
 			}
 
 			c = local
@@ -85,7 +85,7 @@ func (sup *Stackup) Run(network *Network, commands ...*Command) error {
 				err = remote.Connect(host)
 			}
 			if err != nil {
-				log.Fatal(err)
+				return err
 			}
 			defer remote.Close()
 
@@ -105,7 +105,7 @@ func (sup *Stackup) Run(network *Network, commands ...*Command) error {
 		// Translate command into task(s).
 		tasks, err := TasksFromConfigCommand(cmd, env)
 		if err != nil {
-			log.Fatalf("TasksFromConfigCommand(): %s", err)
+			return fmt.Errorf("TasksFromConfigCommand(): %s", err)
 		}
 
 		// Run tasks sequentally.
