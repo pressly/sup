@@ -1,7 +1,9 @@
 package sup
 
 import (
+	"bytes"
 	"errors"
+	"io"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -21,10 +23,10 @@ type Supfile struct {
 
 // Network is group of hosts with extra custom env vars.
 type Network struct {
-	Inventory []string          `yaml:"inventory"`
-	Bastion   string            `yaml:"bastion"` // Jump host for the environment
-	Hosts     []string          `yaml:"hosts"`
 	Env       map[string]string `yaml:"env"`
+	Inventory string            `yaml:"inventory"`
+	Hosts     []string          `yaml:"hosts"`
+	Bastion   string            `yaml:"bastion"` // Jump host for the environment
 }
 
 // Command represents command(s) to be run remotely.
@@ -73,31 +75,50 @@ func NewSupfile(file string) (*Supfile, error) {
 		return nil, errors.New("unsupported version, please update sup by `go get -u github.com/pressly/sup`")
 	}
 
-	return &conf, nil
-}
-
-// AllHosts returns the full set of hosts applicable for n. It will run the Inventory script(s) attached
-// to n and append that to the Hosts slice of n. It will only return an error if the Inventory
-// script return non-zero.
-func (n *Network) AllHosts() ([]string, error) {
-	hosts := []string{}
-
-	for _, cmdline := range n.Inventory {
-		cmd := exec.Command("/bin/sh", "-c", cmdline)
-		cmd.Stderr = os.Stderr
-		buf, err := cmd.Output()
+	for i, network := range conf.Networks {
+		hosts, err := network.ParseInventory()
 		if err != nil {
 			return nil, err
 		}
-		for _, host := range strings.Split(string(buf), "\n") {
-			host = strings.TrimSpace(host)
-			// skip empty lines and comments
-			if host == "" || host[:1] == "#" {
-				continue
-			}
-			hosts = append(hosts, host)
-		}
+		network.Hosts = append(network.Hosts, hosts...)
+		conf.Networks[i] = network
 	}
 
-	return append(n.Hosts, hosts...), nil
+	return &conf, nil
+}
+
+// ParseInventory runs the inventory command, if provided, and appends
+// the command's output lines to the manually defined list of hosts.
+func (n Network) ParseInventory() ([]string, error) {
+	if n.Inventory == "" {
+		return nil, nil
+	}
+
+	cmd := exec.Command("/bin/sh", "-c", n.Inventory)
+	cmd.Stderr = os.Stderr
+	output, err := cmd.Output()
+	if err != nil {
+		return nil, err
+	}
+
+	var hosts []string
+	buf := bytes.NewBuffer(output)
+	for {
+		host, err := buf.ReadString('\n')
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			return nil, err
+		}
+
+		host = strings.TrimSpace(host)
+		// skip empty lines and comments
+		if host == "" || host[:1] == "#" {
+			continue
+		}
+
+		hosts = append(hosts, host)
+	}
+	return hosts, nil
 }
