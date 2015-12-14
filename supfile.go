@@ -33,6 +33,7 @@ type Command struct {
 	Stdin   bool     `yaml:"stdin"`    // Attach localhost STDOUT to remote commands' STDIN?
 	Max     int      `yaml:"max"`      // Max number of clients processing a task in parallel.
 	RunOnce bool     `yaml:"run_once"` // The command should be run once only.
+	Local   bool     `yaml:"local"`    // Run the command in localhost
 	// TODO: RunSerial int      `yaml:"run_serial"` // Max number of clients processing the command in parallel.
 }
 
