@@ -15,7 +15,7 @@ Demo using the following [Supfile](./example/Supfile):
 
 # Usage
 
-    $ sup [-f Supfile] [--only <regexp>] <network> <target/command>
+    $ sup [-f Supfile] [--only <regexp>] <network> <target/command> [...]
 
 | command/option    | description                                                                                          |
 |-------------------|------------------------------------------------------------------------------------------------------|
