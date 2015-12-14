@@ -29,6 +29,8 @@ networks: # Groups of hosts
       - ubuntu@stg.example.com
 
   prod:
+    inventory:
+      - for i in 4 5 6; do echo "$USER@prod$i.example.com\n"; done
     env:
       CONFIG: example.prod.cfg
     hosts:
