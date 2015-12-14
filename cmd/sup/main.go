@@ -19,11 +19,11 @@ var (
 	showVersionLong  = flag.Bool("version", false, "print version")
 	onlyHosts        = flag.String("only", "", "filter hosts with regexp")
 
-	ErrCmd              = errors.New("Usage: sup [-f <Supfile>] [--only host1] <network> <target/command>")
+	ErrUsage            = errors.New("Usage: sup [-f <Supfile>] [--only host1] <network> <target/command> [...]")
 	ErrUnknownNetwork   = errors.New("Unknown network")
-	ErrNetworkNoHosts   = errors.New("No hosts for a given network")
-	ErrTarget           = errors.New("Unknown target")
-	ErrTargetNoCommands = errors.New("No commands for a given target")
+	ErrNetworkNoHosts   = errors.New("No hosts defined for a given network")
+	ErrCmd              = errors.New("Unknown command/target")
+	ErrTargetNoCommands = errors.New("No commands defined for a given target")
 )
 
 func networkUsage(conf *sup.Supfile) {
@@ -31,7 +31,7 @@ func networkUsage(conf *sup.Supfile) {
 	w.Init(os.Stderr, 4, 4, 2, ' ', 0)
 	defer w.Flush()
 
-	// <network> missing, print available hosts.
+	// Print available networks/hosts.
 	fmt.Fprintln(w, "Networks:\t")
 	for name, network := range conf.Networks {
 		fmt.Fprintf(w, "- %v\n", name)
@@ -42,13 +42,12 @@ func networkUsage(conf *sup.Supfile) {
 	fmt.Fprintln(w)
 }
 
-func targetUsage(conf *sup.Supfile) {
+func cmdUsage(conf *sup.Supfile) {
 	w := &tabwriter.Writer{}
 	w.Init(os.Stderr, 4, 4, 2, ' ', 0)
 	defer w.Flush()
 
-	// <target/command> not found or missing,
-	// print available targets/commands.
+	// Print available targets/commands.
 	fmt.Fprintln(w, "Targets:\t")
 	for name, commands := range conf.Targets {
 		fmt.Fprintf(w, "- %v\t%v\n", name, strings.Join(commands, ", "))
@@ -70,7 +69,7 @@ func parseArgs(conf *sup.Supfile) (*sup.Network, []*sup.Command, error) {
 
 	if len(args) < 1 {
 		networkUsage(conf)
-		return nil, nil, ErrCmd
+		return nil, nil, ErrUsage
 	}
 
 	// Does the <network> exist?
@@ -88,8 +87,8 @@ func parseArgs(conf *sup.Supfile) (*sup.Network, []*sup.Command, error) {
 
 	// Check for the second argument
 	if len(args) < 2 {
-		targetUsage(conf)
-		return nil, nil, ErrCmd
+		cmdUsage(conf)
+		return nil, nil, ErrUsage
 	}
 
 	// In case of the network.Env needs an initialization
@@ -97,38 +96,36 @@ func parseArgs(conf *sup.Supfile) (*sup.Network, []*sup.Command, error) {
 		network.Env = make(map[string]string)
 	}
 
-	// Added default env variable with current network
+	// Add default env variable with current network
 	network.Env["SUP_NETWORK"] = args[0]
 
-	// Does the <target/command> exist?
-	target, isTarget := conf.Targets[args[1]]
-	if isTarget {
-		// It's the target. Loop over its commands.
-		for _, cmd := range target {
-			// Does the target's command exist?
-			command, isCommand := conf.Commands[cmd]
-			if !isCommand {
-				targetUsage(conf)
-				return nil, nil, ErrTargetNoCommands
+	for _, cmd := range args[1:] {
+		// Target?
+		target, isTarget := conf.Targets[cmd]
+		if isTarget {
+			// Loop over target's commands.
+			for _, cmd := range target {
+				command, isCommand := conf.Commands[cmd]
+				if !isCommand {
+					cmdUsage(conf)
+					return nil, nil, fmt.Errorf("%v: %v", ErrCmd, cmd)
+				}
+				command.Name = cmd
+				commands = append(commands, &command)
 			}
+		}
+
+		// Command?
+		command, isCommand := conf.Commands[cmd]
+		if isCommand {
 			command.Name = cmd
 			commands = append(commands, &command)
 		}
-	} else {
-		// It's probably a command. Does it exist?
-		command, isCommand := conf.Commands[args[1]]
-		if !isCommand {
-			// Not a target, nor command.
-			targetUsage(conf)
-			return nil, nil, ErrTargetNoCommands
-		}
-		command.Name = args[1]
-		commands = append(commands, &command)
-	}
 
-	// TODO: Do we want to use extra args?
-	if len(args) > 2 {
-		return nil, nil, ErrCmd
+		if !isTarget && !isCommand {
+			cmdUsage(conf)
+			return nil, nil, fmt.Errorf("%v: %v", ErrCmd, cmd)
+		}
 	}
 
 	return &network, commands, nil
