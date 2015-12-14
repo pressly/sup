@@ -11,11 +11,10 @@ import (
 type Task struct {
 	Run     string
 	Input   io.Reader
-	RunOnce bool
-	// TODO: RunSerial int
+	Clients []Client
 }
 
-func TasksFromConfigCommand(cmd *Command, env string) ([]*Task, error) {
+func CreateTasks(cmd *Command, clients []Client, env string) ([]*Task, error) {
 	var tasks []*Task
 
 	// Anything to upload?
@@ -25,10 +24,16 @@ func TasksFromConfigCommand(cmd *Command, env string) ([]*Task, error) {
 			Input: NewTarStreamReader(upload.Src, upload.Exc, env),
 		}
 
-		tasks = append(tasks, task)
+		if cmd.RunOnce {
+			task.Clients = []Client{clients[0]}
+			tasks = append(tasks, task)
+		} else {
+			task.Clients = clients
+			tasks = append(tasks, task)
+		}
 	}
 
-	// Script? Read it as a set of commands.
+	// Script? Read the file as a multiline input command.
 	if cmd.Script != "" {
 		f, err := os.Open(cmd.Script)
 		if err != nil {
@@ -40,29 +45,37 @@ func TasksFromConfigCommand(cmd *Command, env string) ([]*Task, error) {
 		}
 
 		task := &Task{
-			Run:     string(data),
-			RunOnce: cmd.RunOnce,
-			// TODO: RunSerial: cmd.RunSerial,
+			Run: string(data),
 		}
 		if cmd.Stdin {
 			task.Input = os.Stdin
 		}
 
-		tasks = append(tasks, task)
+		if cmd.RunOnce {
+			task.Clients = []Client{clients[0]}
+			tasks = append(tasks, task)
+		} else {
+			task.Clients = clients
+			tasks = append(tasks, task)
+		}
 	}
 
 	// Command?
 	if cmd.Run != "" {
 		task := &Task{
-			Run:     cmd.Run,
-			RunOnce: cmd.RunOnce,
-			// TODO: RunSerial: cmd.RunSerial,
+			Run: cmd.Run,
 		}
 		if cmd.Stdin {
 			task.Input = os.Stdin
 		}
 
-		tasks = append(tasks, task)
+		if cmd.RunOnce {
+			task.Clients = []Client{clients[0]}
+			tasks = append(tasks, task)
+		} else {
+			task.Clients = clients
+			tasks = append(tasks, task)
+		}
 	}
 
 	return tasks, nil
