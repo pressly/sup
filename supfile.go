@@ -3,6 +3,9 @@ package sup
 import (
 	"errors"
 	"io/ioutil"
+	"os"
+	"os/exec"
+	"strings"
 
 	"gopkg.in/yaml.v2"
 )
@@ -18,9 +21,10 @@ type Supfile struct {
 
 // Network is group of hosts with extra custom env vars.
 type Network struct {
-	Bastion string            `yaml:"bastion"` // Jump host for the environment
-	Hosts   []string          `yaml:"hosts"`
-	Env     map[string]string `yaml:"env"`
+	Inventory []string          `yaml:"inventory"`
+	Bastion   string            `yaml:"bastion"` // Jump host for the environment
+	Hosts     []string          `yaml:"hosts"`
+	Env       map[string]string `yaml:"env"`
 }
 
 // Command represents command(s) to be run remotely.
@@ -70,4 +74,30 @@ func NewSupfile(file string) (*Supfile, error) {
 	}
 
 	return &conf, nil
+}
+
+// AllHosts returns the full set of hosts applicable for n. It will run the Inventory script(s) attached
+// to n and append that to the Hosts slice of n. It will only return an error if the Inventory
+// script return non-zero.
+func (n *Network) AllHosts() ([]string, error) {
+	hosts := []string{}
+
+	for _, cmdline := range n.Inventory {
+		cmd := exec.Command("/bin/sh", "-c", cmdline)
+		cmd.Stderr = os.Stderr
+		buf, err := cmd.Output()
+		if err != nil {
+			return nil, err
+		}
+		for _, host := range strings.Split(string(buf), "\n") {
+			host = strings.TrimSpace(host)
+			// skip empty lines and comments
+			if host == "" || host[:1] == "#" {
+				continue
+			}
+			hosts = append(hosts, host)
+		}
+	}
+
+	return append(n.Hosts, hosts...), nil
 }
