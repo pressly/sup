@@ -90,6 +90,11 @@ func NewSupfile(file string) (*Supfile, error) {
 			// 	return nil, errors.New("command.serial is not supported in Supfile v0.2")
 			// }
 		}
+		for _, network := range conf.Networks {
+			if network.Inventory != "" {
+				return nil, errors.New("network.inventory is not supported in Supfile v" + conf.Version)
+			}
+		}
 	case "0.3":
 		for _, cmd := range conf.Commands {
 			if cmd.RunOnce {
