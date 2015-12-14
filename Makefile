@@ -1,10 +1,14 @@
-.PHONY: help build build_pkgs test install clean
+.PHONY: all build dist test install clean tools deps update-deps
 
-help:
-	@echo "build:   Build code."
-	@echo "test:    Run tests."
-	@echo "install: Install binary."
-	@echo "clean:   Clean up."
+all:
+	@echo "build:      Build code."
+	@echo "test:       Run tests."
+	@echo "install:    Install binary."
+	@echo ""
+	@echo "tools       Install tools."
+	@echo "deps        Install dependencies."
+	@echo "update-deps Update dependencies."
+	@echo "clean:      Clean up."
 
 build:
 	@mkdir -p ./bin
@@ -20,7 +24,7 @@ dist:
 	tar -czf ./bin/sup-darwin64.tar.gz ./bin/sup-darwin64
 
 test:
-	go test
+	go test ./...
 
 install: build
 	go install ./...
@@ -28,8 +32,11 @@ install: build
 clean:
 	@rm -rf ./bin
 
+tools:
+	go get -u github.com/pressly/glock
+
 deps:
 	@glock sync -n github.com/pressly/sup < Glockfile
 
-update_deps:
+update-deps:
 	@glock save -n github.com/pressly/sup > Glockfile
