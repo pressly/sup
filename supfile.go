@@ -95,13 +95,18 @@ func NewSupfile(file string) (*Supfile, error) {
 				return nil, errors.New("network.inventory is not supported in Supfile v" + conf.Version)
 			}
 		}
+		fallthrough
 	case "0.3":
-		for _, cmd := range conf.Commands {
+		var warning string
+		for key, cmd := range conf.Commands {
 			if cmd.RunOnce {
-				fmt.Fprintf(os.Stderr, "Warning: command.run_once was deprecated by command.once in Supfile v"+conf.Version+"\n")
-				cmd.Once = cmd.RunOnce
-				break
+				warning = "Warning: command.run_once was deprecated by command.once in Supfile v" + conf.Version + "\n"
+				cmd.Once = true
+				conf.Commands[key] = cmd
 			}
+		}
+		if warning != "" {
+			fmt.Fprintf(os.Stderr, warning)
 		}
 	default:
 		return nil, errors.New("unsupported version, please update sup by `go get -u github.com/pressly/sup`")
