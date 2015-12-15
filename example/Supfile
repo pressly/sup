@@ -116,10 +116,9 @@ commands:
 
   slack-notify:
     desc: Notify Slack about new deployment
-    run: >
+    local: >
       curl -X POST --data-urlencode 'payload={"channel": "#_team_", "text": "['$SUP_NETWORK'] '$(whoami)' deployed '$NAME'"}' \
-        https://hooks.slack.com/services/XXXXXXXXX/YYYYYYYYY/ZZZZZZZZZZZZZZZZZZZZZZZZ
-    once: true
+        https://hooks.slack.com/services/X/Y/Z
 
   shell:
     desc: Interactive shell on all hosts
@@ -142,3 +141,4 @@ targets:
     - ps
     - logs
     - health
+    - slack-notify
