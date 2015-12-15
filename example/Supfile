@@ -87,7 +87,7 @@ commands:
     run: sudo docker restart $NAME || exit 0
 
   stop-rm-run:
-    desc: Stop & remove old Docker container, run new one
+    desc: Rolling update (stop & remove old Docker container, run new one)
     run: >
       sudo docker stop $NAME || :; \
         sudo docker rm $NAME || :; \
