@@ -76,7 +76,7 @@ func CreateTasks(cmd *Command, clients []Client, env string) ([]*Task, error) {
 
 	// Remote command.
 	if cmd.Run != "" {
-		task := &Task{
+		task := Task{
 			Run: cmd.Run,
 		}
 		if cmd.Stdin {
@@ -84,10 +84,22 @@ func CreateTasks(cmd *Command, clients []Client, env string) ([]*Task, error) {
 		}
 		if cmd.RunOnce {
 			task.Clients = []Client{clients[0]}
+			tasks = append(tasks, &task)
+		} else if cmd.Serial > 0 {
+			// Each "serial" task client group is executed sequentially.
+			for i := 0; i < len(clients); i += cmd.Serial {
+				j := i + cmd.Serial
+				if j > len(clients) {
+					j = len(clients)
+				}
+				copy := task
+				copy.Clients = clients[i:j]
+				tasks = append(tasks, &copy)
+			}
 		} else {
 			task.Clients = clients
+			tasks = append(tasks, &task)
 		}
-		tasks = append(tasks, task)
 	}
 
 	return tasks, nil
