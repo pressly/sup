@@ -86,9 +86,9 @@ func NewSupfile(file string) (*Supfile, error) {
 			if cmd.Local != "" {
 				return nil, errors.New("command.local is not supported in Supfile v" + conf.Version)
 			}
-			// if cmd.Serial != 0 {
-			// 	return nil, errors.New("command.serial is not supported in Supfile v0.2")
-			// }
+			if cmd.Serial != 0 {
+				return nil, errors.New("command.serial is not supported in Supfile v" + conf.Version)
+			}
 		}
 		for _, network := range conf.Networks {
 			if network.Inventory != "" {
