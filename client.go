@@ -7,7 +7,7 @@ type Client interface {
 	Run(task *Task) error
 	Wait() error
 	Close() error
-	Prefix() string
+	Prefix() (string, int)
 	Write(p []byte) (n int, err error)
 	WriteClose() error
 	Stdin() io.WriteCloser

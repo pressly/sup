@@ -1,72 +1,65 @@
-# Supfile for "Example" server
+# Supfile for "Example" Docker service
 ---
+version: 0.3
 
-env: # Environment variables for the commands
+env:
+  # Environment variables for all commands
   NAME: example
-  REPO: github.com/pressly/stackup
+  REPO: github.com/pressly/sup
   BRANCH: master
   IMAGE: pressly/example
   HOST_PORT: 8000
   CONTAINER_PORT: 8000
 
-networks: # Groups of hosts
+networks:
+  # Groups of hosts
   local:
-    env:
-      CONFIG: example.local.cfg
     hosts:
       - localhost
 
   dev:
     env:
-      CONFIG: example.dev.cfg
+      # Extra environment variable for dev hosts only
+      DOCKER_HOST: tcp://127.0.0.1:2375
     hosts:
       - docker@192.168.59.103
 
   stg:
-    env:
-      CONFIG: example.stg.cfg
     hosts:
       - ubuntu@stg.example.com
 
   prod:
-    inventory:
-      - for i in 4 5 6; do echo "$USER@prod$i.example.com\n"; done
-    env:
-      CONFIG: example.prod.cfg
-    hosts:
-      - ubuntu@prod1.example.com
-      - ubuntu@prod2.example.com
-      - ubuntu@prod3.example.com
+    inventory: for i in 1 2 3 4; do echo "ubuntu@prod$i.example.com"; done
 
-commands: # Named set of commands to be run remotely
+commands:
+  # Named set of commands to be run remotely
   ping:
     desc: Print uname and current date/time.
     run: uname -a; date
 
-  upload:
-    desc: Upload this repository
+  pre-build:
+    desc: Initialize directory
+    run: mkdir -p /tmp/$IMAGE
+
+  build:
+    desc: Build Docker image from current directory, push to Docker Hub
+    # local: sup -f ./builder/Supfile $SUP_NETWORK build
     upload:
       - src: ./
         dst: /tmp/$IMAGE
-
-  build:
-    desc: Build Docker image
     script: ./scripts/docker-build.sh
+    once: true
 
-  image:
-    desc: List Docker image
-    run: sudo docker images | grep $IMAGE
+  pull:
+    desc: Pull latest Docker image
+    run: sudo docker pull $IMAGE
 
   config:
     desc: Upload/test config file.
     upload:
-      - src: ./$CONFIG
+      - src: ./example.$SUP_NETWORK.cfg
         dst: /tmp/
-    run: test -f /tmp/$CONFIG
-
-  # pull:
-  #   desc: Pull git repository
-  #   script: ./scripts/docker-pull.sh
+    run: test -f /tmp/example.$SUP_NETWORK.cfg
 
   stop:
     desc: Stop Docker container
@@ -82,11 +75,28 @@ commands: # Named set of commands to be run remotely
 
   run:
     desc: Run Docker container
-    script: ./scripts/docker-run.sh
+    run: >
+      sudo docker run -d \
+        -p $HOST_PORT:$CONTAINER_PORT \
+        -v /tmp/example.$SUP_NETWORK.cfg:/etc/example.cfg \
+        --restart=always \
+        --name $NAME $IMAGE
 
   restart:
     desc: Restart Docker container
     run: sudo docker restart $NAME || exit 0
+
+  stop-rm-run:
+    desc: Stop & remove old Docker container, run new one
+    run: >
+      sudo docker stop $NAME || :; \
+        sudo docker rm $NAME || :; \
+        sudo docker run -d \
+          -p $HOST_PORT:$CONTAINER_PORT \
+          -v /tmp/example.$SUP_NETWORK.cfg:/etc/example.cfg \
+          --restart=always \
+          --name $NAME $IMAGE
+    serial: 1
 
   ps:
     desc: List running Docker containers
@@ -104,6 +114,12 @@ commands: # Named set of commands to be run remotely
     desc: Application health check
     run: curl localhost:$HOST_PORT
 
+  slack-notify:
+    desc: Notify Slack about new deployment
+    local: >
+      curl -X POST --data-urlencode 'payload={"channel": "#_team_", "text": "['$SUP_NETWORK'] '$(whoami)' deployed '$NAME'"}' \
+        https://hooks.slack.com/services/X/Y/Z
+
   shell:
     desc: Interactive shell on all hosts
     stdin: true
@@ -112,18 +128,17 @@ commands: # Named set of commands to be run remotely
   exec:
     desc: Interactive docker exec on all hosts
     stdin: true
-    run: docker exec -i $NAME bash
+    run: sudo docker exec -i $NAME bash
 
-targets: # Aliases to run multiple commands at once
+targets:
+  # Aliases to run multiple commands at once
   deploy:
-    #- pull
-    - upload
+    - pre-build
     - build
-    - image
+    - pull
     - config
-    - stop
-    - rm
-    - run
+    - stop-rm-run
     - ps
     - logs
     - health
+    - slack-notify

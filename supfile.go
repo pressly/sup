@@ -3,6 +3,7 @@ package sup
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
@@ -12,7 +13,7 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-// Supfile represents the Stackup configuration YAML file.
+// Supfile represents the Stack Up configuration YAML file.
 type Supfile struct {
 	Networks map[string]Network  `yaml:"networks"`
 	Commands map[string]Command  `yaml:"commands"`
@@ -31,15 +32,18 @@ type Network struct {
 
 // Command represents command(s) to be run remotely.
 type Command struct {
-	Name    string   `yaml:"-"`        // Command name.
-	Desc    string   `yaml:"desc"`     // Command description.
-	Run     string   `yaml:"run"`      // Command(s) to be run remotelly.
-	Script  string   `yaml:"script"`   // Load command(s) from script and run it remotelly.
-	Upload  []Upload `yaml:"upload"`   // See below.
-	Stdin   bool     `yaml:"stdin"`    // Attach localhost STDOUT to remote commands' STDIN?
-	Max     int      `yaml:"max"`      // Max number of clients processing a task in parallel.
-	RunOnce bool     `yaml:"run_once"` // The command should be run once only.
-	// TODO: RunSerial int      `yaml:"run_serial"` // Max number of clients processing the command in parallel.
+	Name   string   `yaml:"-"`      // Command name.
+	Desc   string   `yaml:"desc"`   // Command description.
+	Local  string   `yaml:"local"`  // Command(s) to be run locally.
+	Run    string   `yaml:"run"`    // Command(s) to be run remotelly.
+	Script string   `yaml:"script"` // Load command(s) from script and run it remotelly.
+	Upload []Upload `yaml:"upload"` // See Upload struct.
+	Stdin  bool     `yaml:"stdin"`  // Attach localhost STDOUT to remote commands' STDIN?
+	Once   bool     `yaml:"once"`   // The command should be run "once" (on one host only).
+	Serial int      `yaml:"serial"` // Max number of clients processing a task in parallel.
+
+	// API backward compatibility. Will be deprecated in v1.0.
+	RunOnce bool `yaml:"run_once"` // The command should be run once only.
 }
 
 // Upload represents file copy operation from localhost Src path to Dst
@@ -62,15 +66,43 @@ func NewSupfile(file string) (*Supfile, error) {
 		return nil, err
 	}
 
+	// API backward compatibility. Will be deprecated in v1.0.
 	switch conf.Version {
-	case "", "0.1":
+	case "":
+		conf.Version = "0.1"
+		fallthrough
+	case "0.1":
 		for _, cmd := range conf.Commands {
 			if cmd.RunOnce {
-				return nil, errors.New("command.run_once is not supported in Supfile version 0.1")
+				return nil, errors.New("command.run_once is not supported in Supfile v" + conf.Version)
 			}
 		}
+		fallthrough
 	case "0.2":
-		// latest; skip
+		for _, cmd := range conf.Commands {
+			if cmd.Once {
+				return nil, errors.New("command.once is not supported in Supfile v" + conf.Version)
+			}
+			if cmd.Local != "" {
+				return nil, errors.New("command.local is not supported in Supfile v" + conf.Version)
+			}
+			if cmd.Serial != 0 {
+				return nil, errors.New("command.serial is not supported in Supfile v" + conf.Version)
+			}
+		}
+		for _, network := range conf.Networks {
+			if network.Inventory != "" {
+				return nil, errors.New("network.inventory is not supported in Supfile v" + conf.Version)
+			}
+		}
+	case "0.3":
+		for _, cmd := range conf.Commands {
+			if cmd.RunOnce {
+				fmt.Fprintf(os.Stderr, "Warning: command.run_once was deprecated by command.once in Supfile v"+conf.Version+"\n")
+				cmd.Once = cmd.RunOnce
+				break
+			}
+		}
 	default:
 		return nil, errors.New("unsupported version, please update sup by `go get -u github.com/pressly/sup`")
 	}

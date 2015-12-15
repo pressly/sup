@@ -19,21 +19,32 @@ func CreateTasks(cmd *Command, clients []Client, env string) ([]*Task, error) {
 
 	// Anything to upload?
 	for _, upload := range cmd.Upload {
-		task := &Task{
+		task := Task{
 			Run:   RemoteTarCommand(upload.Dst),
 			Input: NewTarStreamReader(upload.Src, upload.Exc, env),
 		}
 
-		if cmd.RunOnce {
+		if cmd.Once {
 			task.Clients = []Client{clients[0]}
-			tasks = append(tasks, task)
+			tasks = append(tasks, &task)
+		} else if cmd.Serial > 0 {
+			// Each "serial" task client group is executed sequentially.
+			for i := 0; i < len(clients); i += cmd.Serial {
+				j := i + cmd.Serial
+				if j > len(clients) {
+					j = len(clients)
+				}
+				copy := task
+				copy.Clients = clients[i:j]
+				tasks = append(tasks, &copy)
+			}
 		} else {
 			task.Clients = clients
-			tasks = append(tasks, task)
+			tasks = append(tasks, &task)
 		}
 	}
 
-	// Script? Read the file as a multiline input command.
+	// Script. Read the file as a multiline input command.
 	if cmd.Script != "" {
 		f, err := os.Open(cmd.Script)
 		if err != nil {
@@ -44,37 +55,73 @@ func CreateTasks(cmd *Command, clients []Client, env string) ([]*Task, error) {
 			return nil, err
 		}
 
-		task := &Task{
+		task := Task{
 			Run: string(data),
 		}
 		if cmd.Stdin {
 			task.Input = os.Stdin
 		}
-
-		if cmd.RunOnce {
+		if cmd.Once {
 			task.Clients = []Client{clients[0]}
-			tasks = append(tasks, task)
+			tasks = append(tasks, &task)
+		} else if cmd.Serial > 0 {
+			// Each "serial" task client group is executed sequentially.
+			for i := 0; i < len(clients); i += cmd.Serial {
+				j := i + cmd.Serial
+				if j > len(clients) {
+					j = len(clients)
+				}
+				copy := task
+				copy.Clients = clients[i:j]
+				tasks = append(tasks, &copy)
+			}
 		} else {
 			task.Clients = clients
-			tasks = append(tasks, task)
+			tasks = append(tasks, &task)
 		}
 	}
 
-	// Command?
-	if cmd.Run != "" {
+	// Local command.
+	if cmd.Local != "" {
+		local := &LocalhostClient{
+			env: env + `export SUP_HOST="localhost";`,
+		}
+		local.Connect("localhost")
 		task := &Task{
+			Run:     cmd.Local,
+			Clients: []Client{local},
+		}
+		if cmd.Stdin {
+			task.Input = os.Stdin
+		}
+		tasks = append(tasks, task)
+	}
+
+	// Remote command.
+	if cmd.Run != "" {
+		task := Task{
 			Run: cmd.Run,
 		}
 		if cmd.Stdin {
 			task.Input = os.Stdin
 		}
-
-		if cmd.RunOnce {
+		if cmd.Once {
 			task.Clients = []Client{clients[0]}
-			tasks = append(tasks, task)
+			tasks = append(tasks, &task)
+		} else if cmd.Serial > 0 {
+			// Each "serial" task client group is executed sequentially.
+			for i := 0; i < len(clients); i += cmd.Serial {
+				j := i + cmd.Serial
+				if j > len(clients) {
+					j = len(clients)
+				}
+				copy := task
+				copy.Clients = clients[i:j]
+				tasks = append(tasks, &copy)
+			}
 		} else {
 			task.Clients = clients
-			tasks = append(tasks, task)
+			tasks = append(tasks, &task)
 		}
 	}
 

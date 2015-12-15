@@ -27,6 +27,7 @@ type SSHClient struct {
 	sessOpened   bool
 	running      bool
 	env          string //export FOO="bar"; export BAR="baz";
+	color        string
 }
 
 type ErrConnect struct {
@@ -247,8 +248,9 @@ func (c *SSHClient) Stdout() io.Reader {
 	return c.remoteStdout
 }
 
-func (c *SSHClient) Prefix() string {
-	return c.user + "@" + c.host
+func (c *SSHClient) Prefix() (string, int) {
+	host := c.user + "@" + c.host + " | "
+	return c.color + host + ResetColor, len(host)
 }
 
 func (c *SSHClient) Write(p []byte) (n int, err error) {

@@ -12,7 +12,7 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
-const VERSION = "0.2.2"
+const VERSION = "0.3"
 
 type Stackup struct {
 	conf *Supfile
@@ -42,8 +42,6 @@ func (sup *Stackup) Run(network *Network, commands ...*Command) error {
 		env += `export ` + name + `="` + value + `";`
 	}
 
-	var paddingLen int
-
 	// Create clients for every host (either SSH or Localhost).
 	var (
 		clients []Client
@@ -57,46 +55,44 @@ func (sup *Stackup) Run(network *Network, commands ...*Command) error {
 		}
 	}
 
-	for _, host := range network.Hosts {
-		var c Client
-
-		if host == "localhost" { // LocalhostClient
-
+	for i, host := range network.Hosts {
+		// Localhost client.
+		if host == "localhost" {
 			local := &LocalhostClient{
 				env: env + `export SUP_HOST="` + host + `";`,
 			}
 			if err := local.Connect(host); err != nil {
 				return err
 			}
+			clients = append(clients, local)
+			continue
+		}
 
-			c = local
+		// SSH client.
+		remote := &SSHClient{
+			env:   env + `export SUP_HOST="` + host + `";`,
+			color: Colors[i%len(Colors)],
+		}
 
-		} else { // SSHClient
-
-			remote := &SSHClient{
-				env: env + `export SUP_HOST="` + host + `";`,
-			}
-
-			var err error
-			if bastion != nil {
-				err = remote.ConnectWith(host, bastion.DialThrough)
-			} else {
-				err = remote.Connect(host)
-			}
-			if err != nil {
+		if bastion != nil {
+			if err := remote.ConnectWith(host, bastion.DialThrough); err != nil {
 				return err
 			}
-			defer remote.Close()
-
-			c = remote
+		} else {
+			if err := remote.Connect(host); err != nil {
+				return err
+			}
 		}
+		defer remote.Close()
+		clients = append(clients, remote)
+	}
 
-		len := len(c.Prefix())
-		if len > paddingLen {
-			paddingLen = len
+	maxLen := 0
+	for _, c := range clients {
+		_, prefixLen := c.Prefix()
+		if prefixLen > maxLen {
+			maxLen = prefixLen
 		}
-
-		clients = append(clients, c)
 	}
 
 	// Run command or run multiple commands defined by target sequentially.
@@ -104,24 +100,24 @@ func (sup *Stackup) Run(network *Network, commands ...*Command) error {
 		// Translate command into task(s).
 		tasks, err := CreateTasks(cmd, clients, env)
 		if err != nil {
-			return fmt.Errorf("TasksFromConfigCommand(): %s", err)
+			return fmt.Errorf("CreateTasks(): %s", err)
 		}
 
-		// Run tasks sequentally.
+		// Run tasks sequentially.
 		for _, task := range tasks {
 			var writers []io.Writer
 			var wg sync.WaitGroup
 
 			// Run tasks on the provided clients.
-			for i, c := range task.Clients {
-				padding := strings.Repeat(" ", paddingLen-(len(c.Prefix())))
-				color := Colors[i%len(Colors)]
-				i++
-				prefix := color + padding + c.Prefix() + " | "
+			for _, c := range task.Clients {
+				prefix, prefixLen := c.Prefix()
+				if len(prefix) < maxLen { // Left padding.
+					prefix = strings.Repeat(" ", maxLen-prefixLen) + prefix
+				}
 
 				err := c.Run(task)
 				if err != nil {
-					return fmt.Errorf("%sexit %v", prefix, err)
+					return fmt.Errorf("%s%v", prefix, err)
 				}
 
 				// Copy over tasks's STDOUT.
@@ -132,7 +128,7 @@ func (sup *Stackup) Run(network *Network, commands ...*Command) error {
 					if err != nil && err != io.EOF {
 						// TODO: io.Copy() should not return io.EOF at all.
 						// Upstream bug? Or prefixer.WriteTo() bug?
-						fmt.Fprintf(os.Stderr, "%sSTDOUT: %v", c.Prefix(), err)
+						fmt.Fprintf(os.Stderr, "%sSTDOUT: %v", prefix, err)
 					}
 				}(c)
 
@@ -142,7 +138,7 @@ func (sup *Stackup) Run(network *Network, commands ...*Command) error {
 					defer wg.Done()
 					_, err := io.Copy(os.Stderr, prefixer.New(c.Stderr(), prefix))
 					if err != nil && err != io.EOF {
-						fmt.Fprintf(os.Stderr, "%sSTDERR: %v", c.Prefix(), err)
+						fmt.Fprintf(os.Stderr, "%sSTDERR: %v", prefix, err)
 					}
 				}(c)
 
@@ -173,14 +169,16 @@ func (sup *Stackup) Run(network *Network, commands ...*Command) error {
 				go func(c Client) {
 					defer wg.Done()
 					if err := c.Wait(); err != nil {
+						prefix, prefixLen := c.Prefix()
+						if len(prefix) < maxLen { // Left padding.
+							prefix = strings.Repeat(" ", maxLen-prefixLen) + prefix
+						}
 						if e, ok := err.(*ssh.ExitError); ok && e.ExitStatus() != 15 {
-							// TODO: Prefix should be with color.
 							// TODO: Store all the errors, and print them after Wait().
-							fmt.Fprintf(os.Stderr, "%s | exit %v\n", c.Prefix(), e.ExitStatus())
+							fmt.Fprintf(os.Stderr, "%sexit %v\n", prefix, e.ExitStatus())
 							os.Exit(e.ExitStatus())
 						}
-						// TODO: Prefix should be with color.
-						fmt.Fprintf(os.Stderr, "%s | %v\n", c.Prefix(), err)
+						fmt.Fprintf(os.Stderr, "%s%v\n", prefix, err)
 						os.Exit(1)
 					}
 				}(c)
