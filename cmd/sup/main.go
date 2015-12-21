@@ -9,6 +9,7 @@ import (
 	"regexp"
 	"strings"
 	"text/tabwriter"
+	"time"
 
 	"github.com/pressly/sup"
 )
@@ -98,6 +99,12 @@ func parseArgs(conf *sup.Supfile) (*sup.Network, []*sup.Command, error) {
 
 	// Add default env variable with current network
 	network.Env["SUP_NETWORK"] = args[0]
+
+	// Add default nonce
+	network.Env["SUP_NONCE"] = time.Now().Format("2006-01-02T15:04:05")
+	if os.Getenv("SUP_NONCE") != "" {
+		network.Env["SUP_NONCE"] = os.Getenv("SUP_NONCE")
+	}
 
 	for _, cmd := range args[1:] {
 		// Target?
