@@ -27,7 +27,7 @@ test:
 	go test ./...
 
 install:
-	go get -u github.com/pressly/sup/cmd/sup
+	go install ./cmd/sup
 
 clean:
 	@rm -rf ./bin
