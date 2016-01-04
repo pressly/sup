@@ -26,8 +26,8 @@ dist:
 test:
 	go test ./...
 
-install: build
-	go install ./...
+install:
+	go get -u github.com/pressly/sup/cmd/sup
 
 clean:
 	@rm -rf ./bin
