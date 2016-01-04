@@ -15,60 +15,142 @@ Demo using the following [Supfile](./example/Supfile):
 
 # Usage
 
-    $ sup [-f Supfile] [--only <regexp>] <network> <target/command> [...]
+    $ sup [OPTIONS] NETWORK TARGET/COMMAND [...]
 
-| command/option    | description                                                                                          |
-|-------------------|------------------------------------------------------------------------------------------------------|
-| `<network>`       | Group of hosts, eg. `production` that consists of 1-N hosts.                                         |
-| `<command>`       | Name set of bash commands to be run remotely, eg `build` that triggers `docker build -t my/image .`. |
-| `<target>`        | An alias to run multiple `<commands>`, eg `deploy` that triggers `pull`, `build` and `run` commands. |
-|                   |                                                                                                      |
-| `-f Supfile`      | Custom deployment config file (YAML) for `sup`, see [example Supfile](./example/Supfile).            |
-| `--only <regexp>` | Filter `<target>` hosts by regexp string, eg `--only host1`.                                         |
+## Network
 
-## Examples:
+A group of hosts on which COMMAND will be invoked in parallel.
 
-    $ sup prod deploy
-    $ sup --only api1 dev tail-logs
-    $ sup -f Supfile.db stg restart
+```yaml
+# Supfile
+
+networks:
+    production:
+        hosts:
+            - api1.example.com
+            - api2.example.com
+            - api3.example.com
+    staging:
+        hosts:
+            - stg1.example.com
+```
+
+`$ sup production COMMAND` will invoke COMMAND on all production hosts in parallel.
+
+`$ sup staging TARGET` will invoke TARGET on the staging host.
+
+## Command
+
+A shell command (or set of commands) to be run remotely.
+
+```yaml
+# Supfile
+
+commands:
+    restart:
+        desc: Restart example Docker container
+        run: sudo docker restart example
+    tail-logs:
+        desc: Watch tail of Docker logs from all hosts
+        run: sudo docker logs --tail=20 -f example
+    exec:
+        desc: Exec into Docker container on all hosts
+        stdin: true
+        run: sudo docker exec -i example bash
+    bash:
+        desc: Interactive Bash on all hosts
+        stdin: true
+        run: bash
+```
+
+`$ sup production restart` will restart all production `example` Docker containers in parallel.
+
+`$ sup production tail-logs` will tail Docker logs from all production `example` containers in parallel.
+
+`$ sup production exec` will Docker Exec into all production Docker containers and run interactive shell.
+
+`$ sup production bash` will run interactive shell on all production hosts.
+
+## Target
+
+An alias to run multiple COMMANDS.
+
+```yaml
+# Supfile
+
+targets:
+    deploy:
+        - build
+        - pull
+        - migrate-db-up
+        - stop-rm-run
+        - health
+        - slack-notify
+        - airbrake-notify
+```
+
+`$ sup production deploy` will invoke `build`, `pull`, `migrate-db-up`, `stop-rm-run` and `slack-notify` commands sequentially on all production hosts.
+
+## Options
+
+- `-f Supfile` - Use custom Supfile. Supfile is YAML configuration for `sup`, see [example Supfile](./example/Supfile).
+- `--only <regexp>` - Filter NETWORK hosts by regexp string. Example: `$ sup --only api1 production test`.
+
+# Supfile
+
+See [example Supfile](./example/Supfile).
+
+## Basic structure
+
+```yaml
+# Supfile
+---
+version: 0.3
+
+# Global environment variables
+env:
+  NAME: api
+  IMAGE: example/api
+
+networks:
+  local:
+    hosts:
+      - localhost
+  staging:
+    hosts:
+      - stg1.example.com
+  production:
+    hosts:
+      - api1.example.com
+      - api2.example.com
+
+commands:
+  echo:
+    desc: Print some env vars
+    run: echo $NAME $IMAGE $SUP_NETWORK
+  date:
+    desc: Print OS name and current date/time
+    run: uname -a; date
+
+targets:
+  all:
+    - echo
+    - date
+```
+
+## Default environment variables
+
+- `$SUP_NETWORK` - Name of the NETWORK that the command was originally issued against.
+- `$SUP_USER` - Name of user who issued the command.
+- `$SUP_TIME` - Date and time of the original command line invocation.
 
 # Development
 
     fork it..
 
-    $ make deps
+    $ make tools deps
     $ make build
 
 # License
 
 Licensed under the [MIT License](./LICENSE).
-
-# Supfile Tips and Tricks
-
-## Baked-In Variables
-
-`sup` provides a few baked-in variables that make developing and
-re-using Supfiles easier.
-
- - `SUP_NETWORK` the name of the network that the command was
-   originally issued against:
-
- - `SUP_TIME` the date and time of the original command line
-   invocation. Useful for communicating a nonce across hosts in the
-   network. Can be overridden with by setting the environment variable
-   `SUP_TIME`.
-
-```yaml
-commands:
-  preparerelase:
-    desc: Prepare release dir
-    run: mkdir -p /app/rels/$SUP_TIME/
-
-  config:
-    desc: Upload/test config file.
-    upload:
-      - src: ./example.$SUP_NETWORK.cfg
-        dst: /app/rels/$SUP_TIME/
-    run: test -f /app/rels/$SUP_TIME/example.$SUP_NETWORK.cfg
-...
-```

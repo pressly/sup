@@ -120,21 +120,20 @@ commands:
   slack-notify:
     desc: Notify Slack about new deployment
     local: >
-      curl -X POST --data-urlencode 'payload={"channel": "#_team_", "text": "['$SUP_NETWORK'] '$(whoami)' deployed '$NAME'"}' \
+      curl -X POST --data-urlencode 'payload={"channel": "#_team_", "text": "['$SUP_NETWORK'] '$SUP_USER' deployed '$NAME'"}' \
         https://hooks.slack.com/services/X/Y/Z
 
-  shell:
+  bash:
     desc: Interactive shell on all hosts
     stdin: true
-    run: /bin/sh
+    run: bash
 
   exec:
     desc: Interactive docker exec on all hosts
     stdin: true
     run: sudo docker exec -i $NAME bash
 
-targets:
-  # Aliases to run multiple commands at once
+targets: # Aliases to run multiple commands at once
   deploy:
     - pre-build
     - build
