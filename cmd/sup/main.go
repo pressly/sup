@@ -6,9 +6,11 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/user"
 	"regexp"
 	"strings"
 	"text/tabwriter"
+	"time"
 
 	"github.com/pressly/sup"
 )
@@ -98,6 +100,23 @@ func parseArgs(conf *sup.Supfile) (*sup.Network, []*sup.Command, error) {
 
 	// Add default env variable with current network
 	network.Env["SUP_NETWORK"] = args[0]
+
+	// Add default nonce
+	network.Env["SUP_TIME"] = time.Now().UTC().Format(time.RFC3339)
+	if os.Getenv("SUP_TIME") != "" {
+		network.Env["SUP_TIME"] = os.Getenv("SUP_TIME")
+	}
+
+	// Add user
+	if os.Getenv("SUP_USER") != "" {
+		network.Env["SUP_USER"] = os.Getenv("SUP_USER")
+	} else {
+		u, err := user.Current()
+		if err != nil {
+			return nil, nil, err
+		}
+		network.Env["SUP_USER"] = u.Username
+	}
 
 	for _, cmd := range args[1:] {
 		// Target?

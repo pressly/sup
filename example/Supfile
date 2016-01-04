@@ -41,6 +41,9 @@ commands:
     desc: Initialize directory
     run: mkdir -p /tmp/$IMAGE
 
+  mytest:
+    run: echo $SUP_TIME
+
   build:
     desc: Build Docker image from current directory, push to Docker Hub
     # local: sup -f ./builder/Supfile $SUP_NETWORK build

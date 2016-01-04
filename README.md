@@ -42,3 +42,33 @@ Demo using the following [Supfile](./example/Supfile):
 # License
 
 Licensed under the [MIT License](./LICENSE).
+
+# Supfile Tips and Tricks
+
+## Baked-In Variables
+
+`sup` provides a few baked-in variables that make developing and
+re-using Supfiles easier.
+
+ - `SUP_NETWORK` the name of the network that the command was
+   originally issued against:
+
+ - `SUP_TIME` the date and time of the original command line
+   invocation. Useful for communicating a nonce across hosts in the
+   network. Can be overridden with by setting the environment variable
+   `SUP_TIME`.
+
+```yaml
+commands:
+  preparerelase:
+    desc: Prepare release dir
+    run: mkdir -p /app/rels/$SUP_TIME/
+
+  config:
+    desc: Upload/test config file.
+    upload:
+      - src: ./example.$SUP_NETWORK.cfg
+        dst: /app/rels/$SUP_TIME/
+    run: test -f /app/rels/$SUP_TIME/example.$SUP_NETWORK.cfg
+...
+```
