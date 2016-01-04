@@ -102,7 +102,7 @@ func parseArgs(conf *sup.Supfile) (*sup.Network, []*sup.Command, error) {
 	network.Env["SUP_NETWORK"] = args[0]
 
 	// Add default nonce
-	network.Env["SUP_TIME"] = time.Now().UTC().Format("2006-01-02-15:04:05")
+	network.Env["SUP_TIME"] = time.Now().UTC().Format(time.RFC3339)
 	if os.Getenv("SUP_TIME") != "" {
 		network.Env["SUP_TIME"] = os.Getenv("SUP_TIME")
 	}
