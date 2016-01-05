@@ -51,7 +51,14 @@ func (e *EnvList) UnmarshalYAML(unmarshal func(interface{}) error) error {
 
 // Set key to be equal value in this list.
 func (e *EnvList) Set(key, value string) {
-	// if key exists result will be redefinition
+
+	for _, v := range *e {
+		if v.Key == key {
+			v.Value = value
+			return
+		}
+	}
+
 	*e = append(*e, EnvVar{
 		Key:   key,
 		Value: value,
