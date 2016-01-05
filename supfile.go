@@ -13,6 +13,47 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+// Supfile represents the Stack Up configuration YAML file.
+type Supfile struct {
+	Networks map[string]Network  `yaml:"networks"`
+	Commands map[string]Command  `yaml:"commands"`
+	Targets  map[string][]string `yaml:"targets"`
+	Env      EnvList             `yaml:"env"`
+	Version  string              `yaml:"version"`
+}
+
+// Network is group of hosts with extra custom env vars.
+type Network struct {
+	Env       EnvList  `yaml:"env"`
+	Inventory string   `yaml:"inventory"`
+	Hosts     []string `yaml:"hosts"`
+	Bastion   string   `yaml:"bastion"` // Jump host for the environment
+}
+
+// Command represents command(s) to be run remotely.
+type Command struct {
+	Name   string   `yaml:"-"`      // Command name.
+	Desc   string   `yaml:"desc"`   // Command description.
+	Local  string   `yaml:"local"`  // Command(s) to be run locally.
+	Run    string   `yaml:"run"`    // Command(s) to be run remotelly.
+	Script string   `yaml:"script"` // Load command(s) from script and run it remotelly.
+	Upload []Upload `yaml:"upload"` // See Upload struct.
+	Stdin  bool     `yaml:"stdin"`  // Attach localhost STDOUT to remote commands' STDIN?
+	Once   bool     `yaml:"once"`   // The command should be run "once" (on one host only).
+	Serial int      `yaml:"serial"` // Max number of clients processing a task in parallel.
+
+	// API backward compatibility. Will be deprecated in v1.0.
+	RunOnce bool `yaml:"run_once"` // The command should be run once only.
+}
+
+// Upload represents file copy operation from localhost Src path to Dst
+// path of every host in a given Network.
+type Upload struct {
+	Src string `yaml:"src"`
+	Dst string `yaml:"dst"`
+	Exc string `yaml:"exclude"`
+}
+
 // EnvVar represents an environment variable
 type EnvVar struct {
 	Key   string
@@ -63,47 +104,6 @@ func (e *EnvList) Set(key, value string) {
 		Key:   key,
 		Value: value,
 	})
-}
-
-// Supfile represents the Stack Up configuration YAML file.
-type Supfile struct {
-	Networks map[string]Network  `yaml:"networks"`
-	Commands map[string]Command  `yaml:"commands"`
-	Targets  map[string][]string `yaml:"targets"`
-	Env      EnvList             `yaml:"env"`
-	Version  string              `yaml:"version"`
-}
-
-// Network is group of hosts with extra custom env vars.
-type Network struct {
-	Env       EnvList  `yaml:"env"`
-	Inventory string   `yaml:"inventory"`
-	Hosts     []string `yaml:"hosts"`
-	Bastion   string   `yaml:"bastion"` // Jump host for the environment
-}
-
-// Command represents command(s) to be run remotely.
-type Command struct {
-	Name   string   `yaml:"-"`      // Command name.
-	Desc   string   `yaml:"desc"`   // Command description.
-	Local  string   `yaml:"local"`  // Command(s) to be run locally.
-	Run    string   `yaml:"run"`    // Command(s) to be run remotelly.
-	Script string   `yaml:"script"` // Load command(s) from script and run it remotelly.
-	Upload []Upload `yaml:"upload"` // See Upload struct.
-	Stdin  bool     `yaml:"stdin"`  // Attach localhost STDOUT to remote commands' STDIN?
-	Once   bool     `yaml:"once"`   // The command should be run "once" (on one host only).
-	Serial int      `yaml:"serial"` // Max number of clients processing a task in parallel.
-
-	// API backward compatibility. Will be deprecated in v1.0.
-	RunOnce bool `yaml:"run_once"` // The command should be run once only.
-}
-
-// Upload represents file copy operation from localhost Src path to Dst
-// path of every host in a given Network.
-type Upload struct {
-	Src string `yaml:"src"`
-	Dst string `yaml:"dst"`
-	Exc string `yaml:"exclude"`
 }
 
 // NewSupfile parses configuration file and returns Supfile or error.
