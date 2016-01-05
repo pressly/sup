@@ -32,17 +32,17 @@ func (e EnvVar) AsExport() string {
 // but maintains order, enabling late variables to reference early variables.
 type EnvList []EnvVar
 
-func (e *EnvList) UnmarshalYAML(ufn func(interface{}) error) error {
-	d := []yaml.MapItem{}
+func (e *EnvList) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	items := []yaml.MapItem{}
 
-	err := ufn(&d)
+	err := unmarshal(&items)
 	if err != nil {
 		return err
 	}
 
-	*e = make(EnvList, 0, len(d))
+	*e = make(EnvList, 0, len(items))
 
-	for _, v := range d {
+	for _, v := range items {
 		e.Set(fmt.Sprintf("%v", v.Key), fmt.Sprintf("%v", v.Value))
 	}
 
