@@ -13,21 +13,66 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+// EnvVar represents an environment variable
+type EnvVar struct {
+	Key   string
+	Value string
+}
+
+func (e EnvVar) String() string {
+	return e.Key + `=` + e.Value
+}
+
+// AsExport returns the environment variable as a bash export statement
+func (e EnvVar) AsExport() string {
+	return `export ` + e.Key + `="` + e.Value + `";`
+}
+
+// EnvList is a list of environment variables that maps to a YAML map,
+// but maintains order, enabling late variables to reference early variables.
+type EnvList []EnvVar
+
+func (e *EnvList) UnmarshalYAML(ufn func(interface{}) error) error {
+	d := []yaml.MapItem{}
+
+	err := ufn(&d)
+	if err != nil {
+		return err
+	}
+
+	*e = make(EnvList, 0, len(d))
+
+	for _, v := range d {
+		e.Set(fmt.Sprintf("%v", v.Key), fmt.Sprintf("%v", v.Value))
+	}
+
+	return nil
+}
+
+// Set key to be equal value in this list.
+func (e *EnvList) Set(key, value string) {
+	// if key exists result will be redefinition
+	*e = append(*e, EnvVar{
+		Key:   key,
+		Value: value,
+	})
+}
+
 // Supfile represents the Stack Up configuration YAML file.
 type Supfile struct {
 	Networks map[string]Network  `yaml:"networks"`
 	Commands map[string]Command  `yaml:"commands"`
 	Targets  map[string][]string `yaml:"targets"`
-	Env      map[string]string   `yaml:"env"`
+	Env      EnvList             `yaml:"env"`
 	Version  string              `yaml:"version"`
 }
 
 // Network is group of hosts with extra custom env vars.
 type Network struct {
-	Env       map[string]string `yaml:"env"`
-	Inventory string            `yaml:"inventory"`
-	Hosts     []string          `yaml:"hosts"`
-	Bastion   string            `yaml:"bastion"` // Jump host for the environment
+	Env       EnvList  `yaml:"env"`
+	Inventory string   `yaml:"inventory"`
+	Hosts     []string `yaml:"hosts"`
+	Bastion   string   `yaml:"bastion"` // Jump host for the environment
 }
 
 // Command represents command(s) to be run remotely.

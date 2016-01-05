@@ -95,27 +95,27 @@ func parseArgs(conf *sup.Supfile) (*sup.Network, []*sup.Command, error) {
 
 	// In case of the network.Env needs an initialization
 	if network.Env == nil {
-		network.Env = make(map[string]string)
+		network.Env = make(sup.EnvList, 0)
 	}
 
 	// Add default env variable with current network
-	network.Env["SUP_NETWORK"] = args[0]
+	network.Env.Set("SUP_NETWORK", args[0])
 
 	// Add default nonce
-	network.Env["SUP_TIME"] = time.Now().UTC().Format(time.RFC3339)
+	network.Env.Set("SUP_TIME", time.Now().UTC().Format(time.RFC3339))
 	if os.Getenv("SUP_TIME") != "" {
-		network.Env["SUP_TIME"] = os.Getenv("SUP_TIME")
+		network.Env.Set("SUP_TIME", os.Getenv("SUP_TIME"))
 	}
 
 	// Add user
 	if os.Getenv("SUP_USER") != "" {
-		network.Env["SUP_USER"] = os.Getenv("SUP_USER")
+		network.Env.Set("SUP_USER", os.Getenv("SUP_USER"))
 	} else {
 		u, err := user.Current()
 		if err != nil {
 			return nil, nil, err
 		}
-		network.Env["SUP_USER"] = u.Username
+		network.Env.Set("SUP_USER", u.Username)
 	}
 
 	for _, cmd := range args[1:] {

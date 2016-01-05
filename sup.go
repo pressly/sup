@@ -35,11 +35,8 @@ func (sup *Stackup) Run(network *Network, commands ...*Command) error {
 	// Process all ENVs into a string of form
 	// `export FOO="bar"; export BAR="baz";`.
 	env := ``
-	for name, value := range sup.conf.Env {
-		env += `export ` + name + `="` + value + `";`
-	}
-	for name, value := range network.Env {
-		env += `export ` + name + `="` + value + `";`
+	for _, v := range append(sup.conf.Env, network.Env...) {
+		env += v.AsExport() + " "
 	}
 
 	// Create clients for every host (either SSH or Localhost).
