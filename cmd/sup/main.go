@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"os/user"
 	"regexp"
 	"strings"
 	"text/tabwriter"
@@ -111,11 +110,7 @@ func parseArgs(conf *sup.Supfile) (*sup.Network, []*sup.Command, error) {
 	if os.Getenv("SUP_USER") != "" {
 		network.Env.Set("SUP_USER", os.Getenv("SUP_USER"))
 	} else {
-		u, err := user.Current()
-		if err != nil {
-			return nil, nil, err
-		}
-		network.Env.Set("SUP_USER", u.Username)
+		network.Env.Set("SUP_USER", os.Getenv("USER"))
 	}
 
 	for _, cmd := range args[1:] {
