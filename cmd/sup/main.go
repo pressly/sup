@@ -51,7 +51,7 @@ func cmdUsage(conf *sup.Supfile) {
 	// Print available targets/commands.
 	fmt.Fprintln(w, "Targets:\t")
 	for name, commands := range conf.Targets {
-		fmt.Fprintf(w, "- %v\t%v\n", name, strings.Join(commands, ", "))
+		fmt.Fprintf(w, "- %v\t%v\n", name, strings.Join(commands, " "))
 	}
 	fmt.Fprintln(w, "\t")
 	fmt.Fprintln(w, "Commands:\t")
