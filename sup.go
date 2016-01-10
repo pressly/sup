@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/signal"
 	"strings"
 	"sync"
 
@@ -175,6 +176,26 @@ func (sup *Stackup) Run(network *Network, commands ...*Command) error {
 				}()
 			}
 
+			// Catch OS signals and pass them to all active clients.
+			trap := make(chan os.Signal, 1)
+			signal.Notify(trap, os.Interrupt)
+			go func() {
+				for {
+					select {
+					case sig, ok := <-trap:
+						if !ok {
+							return
+						}
+						for _, c := range task.Clients {
+							err := c.Signal(sig)
+							if err != nil {
+								fmt.Printf("sending signal failed: %v", err)
+							}
+						}
+					}
+				}
+			}()
+
 			// Wait for all I/O operations first.
 			wg.Wait()
 
@@ -201,6 +222,10 @@ func (sup *Stackup) Run(network *Network, commands ...*Command) error {
 
 			// Wait for all commands to finish.
 			wg.Wait()
+
+			// Stop catching signals for the currently active clients.
+			signal.Stop(trap)
+			close(trap)
 		}
 	}
 

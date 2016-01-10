@@ -260,3 +260,16 @@ func (c *SSHClient) Write(p []byte) (n int, err error) {
 func (c *SSHClient) WriteClose() error {
 	return c.remoteStdin.Close()
 }
+
+func (c *SSHClient) Signal(sig os.Signal) error {
+	if !c.sessOpened {
+		return fmt.Errorf("session is not open")
+	}
+
+	switch sig {
+	case os.Interrupt:
+		return c.sess.Signal(ssh.SIGINT)
+	default:
+		return fmt.Errorf("%v not supported", sig)
+	}
+}

@@ -1,6 +1,9 @@
 package sup
 
-import "io"
+import (
+	"io"
+	"os"
+)
 
 type Client interface {
 	Connect(host string) error
@@ -13,4 +16,5 @@ type Client interface {
 	Stdin() io.WriteCloser
 	Stderr() io.Reader
 	Stdout() io.Reader
+	Signal(os.Signal) error
 }
