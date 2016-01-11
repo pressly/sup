@@ -178,14 +178,24 @@ func (c *SSHClient) Run(task *Task) error {
 		return err
 	}
 
-	c.sess = sess
-	c.sessOpened = true
+	// Set up terminal modes
+	modes := ssh.TerminalModes{
+		ssh.ECHO:          0,     // disable echoing
+		ssh.TTY_OP_ISPEED: 14400, // input speed = 14.4kbaud
+		ssh.TTY_OP_OSPEED: 14400, // output speed = 14.4kbaud
+	}
+	// Request pseudo terminal
+	if err := sess.RequestPty("xterm", 80, 40, modes); err != nil {
+		return fmt.Errorf("request for pseudo terminal failed: %s", err)
+	}
 
 	// Start the remote command.
 	if err := c.sess.Start(c.env + "set -x;" + task.Run); err != nil {
 		return ErrTask{task, err.Error()}
 	}
 
+	c.sess = sess
+	c.sessOpened = true
 	c.running = true
 	return nil
 }
@@ -268,6 +278,13 @@ func (c *SSHClient) Signal(sig os.Signal) error {
 
 	switch sig {
 	case os.Interrupt:
+		// TODO: Turns out that .Signal(ssh.SIGHUP) doesn't work for me.
+		// Instead, sending \x03 to the remote session works for me,
+		// which sounds like something that should be fixed/resolved
+		// upstream in the golang.org/x/crypto/ssh pkg.
+		// https://github.com/golang/go/issues/4115#issuecomment-66070418
+		c.sess.Signal(ssh.SIGHUP)
+		c.remoteStdin.Write([]byte("\x03"))
 		return c.sess.Signal(ssh.SIGINT)
 	default:
 		return fmt.Errorf("%v not supported", sig)
