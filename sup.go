@@ -103,6 +103,7 @@ func (sup *Stackup) Run(network *Network, commands ...*Command) error {
 			if err != nil {
 				return err
 			}
+			break
 		}
 	}
 
