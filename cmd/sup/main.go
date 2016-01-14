@@ -18,6 +18,7 @@ var (
 	showHelp    bool
 	supfile     string
 	onlyHosts   string
+	exceptHosts string
 
 	ErrUsage            = errors.New("Usage: sup [OPTIONS] NETWORK TARGET/COMMAND [...]\n       sup [ --help | -v | --version ]")
 	ErrUnknownNetwork   = errors.New("Unknown network")
@@ -33,6 +34,7 @@ func init() {
 	flag.BoolVar(&showHelp, "help", false, "show help")
 	flag.StringVar(&supfile, "f", "./Supfile", "custom path to Supfile")
 	flag.StringVar(&onlyHosts, "only", "", "filter hosts with regexp")
+	flag.StringVar(&exceptHosts, "except", "", "filter out hosts with regexp")
 }
 
 func networkUsage(conf *sup.Supfile) {
@@ -195,7 +197,28 @@ func main() {
 			}
 		}
 		if len(hosts) == 0 {
-			fmt.Fprintln(os.Stderr, fmt.Errorf("no hosts match '%v' regexp", onlyHosts))
+			fmt.Fprintln(os.Stderr, fmt.Errorf("no hosts match --only '%v' regexp", onlyHosts))
+			os.Exit(1)
+		}
+		network.Hosts = hosts
+	}
+
+	// --except option to filter out hosts
+	if exceptHosts != "" {
+		expr, err := regexp.CompilePOSIX(exceptHosts)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+
+		var hosts []string
+		for _, host := range network.Hosts {
+			if !expr.MatchString(host) {
+				hosts = append(hosts, host)
+			}
+		}
+		if len(hosts) == 0 {
+			fmt.Fprintln(os.Stderr, fmt.Errorf("no hosts match left after --except '%v' regexp", onlyHosts))
 			os.Exit(1)
 		}
 		network.Hosts = hosts
