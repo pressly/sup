@@ -14,10 +14,10 @@ import (
 )
 
 var (
-	supfile          = flag.String("f", "./Supfile", "custom path to Supfile")
-	showVersionShort = flag.Bool("v", false, "print version")
-	showVersionLong  = flag.Bool("version", false, "print version")
-	onlyHosts        = flag.String("only", "", "filter hosts with regexp")
+	showVersion bool
+	showHelp    bool
+	supfile     string
+	onlyHosts   string
 
 	ErrUsage            = errors.New("Usage: sup [OPTIONS] NETWORK TARGET/COMMAND [...]\n       sup [ --help | -v | --version ]")
 	ErrUnknownNetwork   = errors.New("Unknown network")
@@ -25,6 +25,15 @@ var (
 	ErrCmd              = errors.New("Unknown command/target")
 	ErrTargetNoCommands = errors.New("No commands defined for a given target")
 )
+
+func init() {
+	flag.BoolVar(&showVersion, "v", false, "print version")
+	flag.BoolVar(&showVersion, "version", false, "print version")
+	flag.BoolVar(&showHelp, "h", false, "show help")
+	flag.BoolVar(&showHelp, "help", false, "show help")
+	flag.StringVar(&supfile, "f", "./Supfile", "custom path to Supfile")
+	flag.StringVar(&onlyHosts, "only", "", "filter hosts with regexp")
+}
 
 func networkUsage(conf *sup.Supfile) {
 	w := &tabwriter.Writer{}
@@ -147,12 +156,18 @@ func parseArgs(conf *sup.Supfile) (*sup.Network, []*sup.Command, error) {
 func main() {
 	flag.Parse()
 
-	if *showVersionShort || *showVersionLong {
+	if showHelp {
+		fmt.Fprintln(os.Stderr, ErrUsage, "\n\nOptions:")
+		flag.PrintDefaults()
+		return
+	}
+
+	if showVersion {
 		fmt.Fprintln(os.Stderr, sup.VERSION)
 		return
 	}
 
-	conf, err := sup.NewSupfile(*supfile)
+	conf, err := sup.NewSupfile(supfile)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
@@ -166,8 +181,8 @@ func main() {
 	}
 
 	// --only option to filter hosts
-	if *onlyHosts != "" {
-		expr, err := regexp.CompilePOSIX(*onlyHosts)
+	if onlyHosts != "" {
+		expr, err := regexp.CompilePOSIX(onlyHosts)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
@@ -180,7 +195,7 @@ func main() {
 			}
 		}
 		if len(hosts) == 0 {
-			fmt.Fprintln(os.Stderr, fmt.Errorf("no hosts match '%v' regexp", *onlyHosts))
+			fmt.Fprintln(os.Stderr, fmt.Errorf("no hosts match '%v' regexp", onlyHosts))
 			os.Exit(1)
 		}
 		network.Hosts = hosts
