@@ -4,7 +4,6 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"log"
 	"os"
 	"regexp"
 	"strings"
@@ -20,7 +19,7 @@ var (
 	showVersionLong  = flag.Bool("version", false, "print version")
 	onlyHosts        = flag.String("only", "", "filter hosts with regexp")
 
-	ErrUsage            = errors.New("Usage: sup [-f <Supfile>] [--only host1] <network> <target/command> [...]")
+	ErrUsage            = errors.New("Usage: sup [OPTIONS] NETWORK TARGET/COMMAND [...]\n       sup [ --help | -v | --version ]")
 	ErrUnknownNetwork   = errors.New("Unknown network")
 	ErrNetworkNoHosts   = errors.New("No hosts defined for a given network")
 	ErrCmd              = errors.New("Unknown command/target")
@@ -149,26 +148,29 @@ func main() {
 	flag.Parse()
 
 	if *showVersionShort || *showVersionLong {
-		fmt.Println(sup.VERSION)
+		fmt.Fprintln(os.Stderr, sup.VERSION)
 		return
 	}
 
 	conf, err := sup.NewSupfile(*supfile)
 	if err != nil {
-		log.Fatal(err)
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
 	}
 
 	// Parse network and commands to be run from args.
 	network, commands, err := parseArgs(conf)
 	if err != nil {
-		log.Fatal(err)
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
 	}
 
 	// --only option to filter hosts
 	if *onlyHosts != "" {
 		expr, err := regexp.CompilePOSIX(*onlyHosts)
 		if err != nil {
-			log.Fatal(err)
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
 		}
 
 		var hosts []string
@@ -178,7 +180,8 @@ func main() {
 			}
 		}
 		if len(hosts) == 0 {
-			log.Fatal(fmt.Errorf("no hosts match '%v' regexp", *onlyHosts))
+			fmt.Fprintln(os.Stderr, fmt.Errorf("no hosts match '%v' regexp", *onlyHosts))
+			os.Exit(1)
 		}
 		network.Hosts = hosts
 	}
@@ -186,12 +189,14 @@ func main() {
 	// Create new Stackup app.
 	app, err := sup.New(conf)
 	if err != nil {
-		log.Fatal(err)
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
 	}
 
 	// Run all the commands in the given network.
 	err = app.Run(network, commands...)
 	if err != nil {
-		log.Fatal(err)
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
 	}
 }
