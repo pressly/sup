@@ -17,7 +17,17 @@ Demo using the following [Supfile](./example/Supfile):
 
     $ sup [OPTIONS] NETWORK TARGET/COMMAND [...]
 
-## Network
+### Options
+
+| Option            | Description                                  |
+|-------------------|----------------------------------------------|
+| `--help`, `-h`    | Print help/usage                             |
+| `--version`, `-v` | Print version                                |
+| `-f Supfile`      | Location of Supfile                          |
+| `--only REGEXP`   | Filter NETWORK hosts using regexp string     |
+| `--except REGEXP` | Filter out NETWORK hosts using regexp string |
+
+### Network
 
 A group of hosts on which COMMAND will be invoked in parallel.
 
@@ -39,7 +49,27 @@ networks:
 
 `$ sup staging TARGET` will invoke TARGET on the staging host.
 
-## Command
+### Target
+
+An alias to run multiple COMMANDS.
+
+```yaml
+# Supfile
+
+targets:
+    deploy:
+        - build
+        - pull
+        - migrate-db-up
+        - stop-rm-run
+        - health
+        - slack-notify
+        - airbrake-notify
+```
+
+`$ sup production deploy` will invoke `build`, `pull`, `migrate-db-up`, `stop-rm-run` and `slack-notify` commands sequentially on all production hosts.
+
+### Command
 
 A shell command (or set of commands) to be run remotely.
 
@@ -71,36 +101,11 @@ commands:
 
 `$ sup production bash` will run interactive shell on all production hosts.
 
-## Target
-
-An alias to run multiple COMMANDS.
-
-```yaml
-# Supfile
-
-targets:
-    deploy:
-        - build
-        - pull
-        - migrate-db-up
-        - stop-rm-run
-        - health
-        - slack-notify
-        - airbrake-notify
-```
-
-`$ sup production deploy` will invoke `build`, `pull`, `migrate-db-up`, `stop-rm-run` and `slack-notify` commands sequentially on all production hosts.
-
-## Options
-
-- `-f Supfile` - Use custom Supfile. Supfile is YAML configuration for `sup`, see [example Supfile](./example/Supfile).
-- `--only <regexp>` - Filter NETWORK hosts by regexp string. Example: `$ sup --only api1 production test`.
-
 # Supfile
 
 See [example Supfile](./example/Supfile).
 
-## Basic structure
+### Basic structure
 
 ```yaml
 # Supfile
@@ -138,7 +143,7 @@ targets:
     - date
 ```
 
-## Default environment variables
+### Default environment variables
 
 - `$SUP_NETWORK` - Name of the NETWORK that the command was originally issued against.
 - `$SUP_USER` - Name of user who issued the command.

@@ -33,8 +33,8 @@ func init() {
 	flag.BoolVar(&showHelp, "h", false, "show help")
 	flag.BoolVar(&showHelp, "help", false, "show help")
 	flag.StringVar(&supfile, "f", "./Supfile", "custom path to Supfile")
-	flag.StringVar(&onlyHosts, "only", "", "filter hosts with regexp")
-	flag.StringVar(&exceptHosts, "except", "", "filter out hosts with regexp")
+	flag.StringVar(&onlyHosts, "only", "", "filter hosts using regexp")
+	flag.StringVar(&exceptHosts, "except", "", "filter out hosts using regexp")
 }
 
 func networkUsage(conf *sup.Supfile) {
@@ -218,7 +218,7 @@ func main() {
 			}
 		}
 		if len(hosts) == 0 {
-			fmt.Fprintln(os.Stderr, fmt.Errorf("no hosts match left after --except '%v' regexp", onlyHosts))
+			fmt.Fprintln(os.Stderr, fmt.Errorf("no hosts left after --except '%v' regexp", onlyHosts))
 			os.Exit(1)
 		}
 		network.Hosts = hosts
