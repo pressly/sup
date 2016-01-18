@@ -8,7 +8,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/pressly/prefixer"
+	"github.com/goware/prefixer"
 	"golang.org/x/crypto/ssh"
 )
 
