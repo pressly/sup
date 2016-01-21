@@ -5,13 +5,15 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"strings"
 )
 
 // Task represents a set of commands to be run.
 type Task struct {
-	Run     string
-	Input   io.Reader
-	Clients []Client
+	Run       string
+	Arguments []string
+	Input     io.Reader
+	Clients   []Client
 }
 
 func CreateTasks(cmd *Command, clients []Client, env string) ([]*Task, error) {
@@ -46,7 +48,18 @@ func CreateTasks(cmd *Command, clients []Client, env string) ([]*Task, error) {
 
 	// Script. Read the file as a multiline input command.
 	if cmd.Script != "" {
-		f, err := os.Open(cmd.Script)
+		var scriptPath string
+		var arguments []string
+
+		if strings.Contains(cmd.Script, " ") {
+			scripts := strings.Split(cmd.Script, " ")
+			scriptPath = scripts[0]
+			arguments = scripts[1:]
+		} else {
+			scriptPath = cmd.Script
+		}
+
+		f, err := os.Open(scriptPath)
 		if err != nil {
 			return nil, err
 		}
@@ -57,6 +70,9 @@ func CreateTasks(cmd *Command, clients []Client, env string) ([]*Task, error) {
 
 		task := Task{
 			Run: string(data),
+		}
+		if len(arguments) > 0 {
+			task.Arguments = arguments
 		}
 		if cmd.Stdin {
 			task.Input = os.Stdin

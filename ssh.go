@@ -181,6 +181,24 @@ func (c *SSHClient) Run(task *Task) error {
 	c.sess = sess
 	c.sessOpened = true
 
+	if len(task.Arguments) > 0 {
+		cmd := task.Run
+		lines := strings.Split(task.Run, "\n")
+		for i, l := range lines {
+			if strings.Contains(l, "'") {
+				parts := strings.Split(l, "'")
+				for k, part := range parts {
+					parts[k] = fmt.Sprintf("'%s'", part)
+				}
+				lines[i] = fmt.Sprintf("echo %s", strings.Join(parts, "\"'\""))
+			} else {
+				lines[i] = fmt.Sprintf("echo '%s'", strings.Replace(l, "'", "\\'", -1))
+			}
+		}
+		cmd = strings.Join(lines, "; ")
+		task.Run = fmt.Sprintf("/bin/sh <(%s) %s", cmd, strings.Join(task.Arguments, " "))
+	}
+
 	// Start the remote command.
 	if err := c.sess.Start(c.env + "set -x;" + task.Run); err != nil {
 		return ErrTask{task, err.Error()}
