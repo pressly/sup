@@ -18,24 +18,27 @@ func RemoteTarCommand(dir string) string {
 	return fmt.Sprintf("tar -C \"%s\" -xzf -", dir)
 }
 
-func LocalTarCommand(path, exclude string) string {
+func localTarOptions(path, exclude string) []string {
 
 	// Added pattens to exclude from tar compress
-	excludes := ""
+	var excludes []string
 
 	result := strings.Split(exclude, ",")
 
 	for _, exclude := range result {
-		excludes += `--exclude=` + strings.TrimSpace(exclude) + ` `
+		if exclude != "" {
+			excludes = append(excludes, "--exclude=" + strings.TrimSpace(exclude))
+		}
 	}
 
-	return fmt.Sprintf("tar %s -C '.' -czf - %s", excludes, path)
+	tarOptions := append([]string{"-czf", "-"}, excludes...)
+	return append(tarOptions, path)
 }
 
 // NewTarStreamReader creates a tar stream reader from a local path.
 // TODO: Refactor. Use "archive/tar" instead.
-func NewTarStreamReader(path, exclude, env string) io.Reader {
-	cmd := exec.Command("bash", "-c", env+LocalTarCommand(path, exclude))
+func NewTarStreamReader(path, exclude string) io.Reader {
+	cmd := exec.Command("tar", append(localTarOptions(path, exclude))...)
 
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {

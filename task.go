@@ -21,7 +21,7 @@ func CreateTasks(cmd *Command, clients []Client, env string) ([]*Task, error) {
 	for _, upload := range cmd.Upload {
 		task := Task{
 			Run:   RemoteTarCommand(upload.Dst),
-			Input: NewTarStreamReader(upload.Src, upload.Exc, env),
+			Input: NewTarStreamReader(upload.Src, upload.Exc),
 		}
 
 		if cmd.Once {
