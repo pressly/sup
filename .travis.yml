@@ -1,11 +1,11 @@
 sudo: false
 language: go
 go:
-- 1.6.0
-- tip
+  - 1.6
+  - tip
 
 install:
-- make build
+  - make build
 
 script:
-- make test
+  - make test
