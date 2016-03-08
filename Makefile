@@ -1,14 +1,15 @@
 .PHONY: all build dist test install clean tools deps update-deps
 
 all:
-	@echo "build:      Build code."
-	@echo "test:       Run tests."
-	@echo "install:    Install binary."
+	@echo "build         - Build sup"
+	@echo "dist          - Build sup distribution binaries"
+	@echo "test          - Run tests"
+	@echo "install       - Install binary"
+	@echo "clean         - Clean up"
 	@echo ""
-	@echo "tools       Install tools."
-	@echo "deps        Install dependencies."
-	@echo "update-deps Update dependencies."
-	@echo "clean:      Clean up."
+	@echo "tools         - Install tools"
+	@echo "vendor-list   - List vendor package tree"
+	@echo "vendor-update - Update vendored packages"
 
 build:
 	@mkdir -p ./bin
@@ -33,10 +34,10 @@ clean:
 	@rm -rf ./bin
 
 tools:
-	go get -u github.com/pressly/glock
+	go get -u github.com/kardianos/govendor
 
-deps:
-	@glock sync -n github.com/pressly/sup < Glockfile
+vendor-list:
+	@govendor list
 
-update-deps:
-	@glock save -n github.com/pressly/sup > Glockfile
+vendor-update:
+	@govendor update +external
