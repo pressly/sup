@@ -153,7 +153,7 @@ targets:
 
     fork it..
 
-    $ make tools deps
+    $ make tools
     $ make build
 
 # License
