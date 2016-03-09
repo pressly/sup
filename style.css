@@ -40,6 +40,24 @@ main pre[class*="language-"] {
   height: 5em;
 }
 
+.releases-button {
+  display: inline-block;
+  border: thin solid;
+  border-radius: 4px;
+  margin: .5em auto 1.5em;
+  padding: .5em 1.5em;
+}
+
+.releases-button strong {
+  position: relative;
+  margin-left: .5em;
+  padding-left: .6em;
+  display: inline-block;
+  border-left: thin solid orange;
+  line-height: 1em;
+  font-weight: normal;
+}
+
 
 h1, h2, h3, h4 {
   margin: 1em 0;
