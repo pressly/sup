@@ -98,3 +98,11 @@ func (c *LocalhostClient) Write(p []byte) (n int, err error) {
 func (c *LocalhostClient) WriteClose() error {
 	return c.stdin.Close()
 }
+
+func (c *LocalhostClient) GetHost() string {
+	return "localhost"
+}
+
+func (c *LocalhostClient) GetUser() string {
+	return c.user
+}
