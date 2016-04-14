@@ -44,6 +44,21 @@ func CreateTasks(cmd *Command, clients []Client, env string) ([]*Task, error) {
 		}
 	}
 
+	// Anything to sync?
+	for _, rsync := range cmd.RSync {
+		for _, c := range clients {
+			local := &LocalhostClient{
+				env: env + `export SUP_HOST="localhost";`,
+			}
+			local.Connect("localhost")
+			task := &Task{
+				Run:     NewRSyncCommand(rsync.Src, rsync.Dst, c.GetUser(), c.GetHost()),
+				Clients: []Client{local},
+			}
+			tasks = append(tasks, task)
+		}
+	}
+
 	// Script. Read the file as a multiline input command.
 	if cmd.Script != "" {
 		f, err := os.Open(cmd.Script)

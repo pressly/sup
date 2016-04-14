@@ -13,4 +13,6 @@ type Client interface {
 	Stdin() io.WriteCloser
 	Stderr() io.Reader
 	Stdout() io.Reader
+	GetHost() string
+	GetUser() string
 }
