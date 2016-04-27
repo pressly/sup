@@ -93,9 +93,9 @@ func (e *EnvList) UnmarshalYAML(unmarshal func(interface{}) error) error {
 // Set key to be equal value in this list.
 func (e *EnvList) Set(key, value string) {
 
-	for _, v := range *e {
+	for i, v := range *e {
 		if v.Key == key {
-			v.Value = value
+			(*e)[i].Value = value
 			return
 		}
 	}
