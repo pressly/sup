@@ -95,7 +95,7 @@ func (e *EnvList) Set(key, value string) {
 
 	for _, v := range *e {
 		if v.Key == key {
-			v.Value = value
+			(*e)[i].Value = value
 			return
 		}
 	}
