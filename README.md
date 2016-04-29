@@ -154,16 +154,15 @@ $ sup production bash
 Passing prepared commands to all hosts:
 ```bash
 $ echo 'sudo apt-get update -y' | sup production bash
-#
+
 # or:
-sup production bash <<< 'sudo apt-get update -y'
-#
+$ sup production bash <<< 'sudo apt-get update -y'
+
 # or:
 $ cat <<EOF | sup production bash
 sudo apt-get update -y
 date
 uname -a
-# any other commands here
 EOF
 ```
 
