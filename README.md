@@ -208,7 +208,7 @@ targets:
 
 is equivalent to
 
-`$ sup production build pull stop-rm-run health slack-notify airbrake-notify`
+`$ sup production build pull migrate-db-up stop-rm-run health slack-notify airbrake-notify`
 
 # Supfile
 
@@ -254,8 +254,8 @@ targets:
 
 ### Default environment variables you can use
 
-- `$SUP_NETWORK` - Name of the NETWORK that the command was originally issued against.
-- `$SUP_USER` - Name of user who issued the command.
+- `$SUP_NETWORK` - Network selected by current user.
+- `$SUP_USER` - Current user who invoked the sup command.
 - `$SUP_TIME` - Date and time of the original command line invocation.
 
 # Development
