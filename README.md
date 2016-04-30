@@ -100,7 +100,7 @@ commands:
         run: sudo docker pull image:latest
 ```
 
-`$ sup build pull` will build Docker image on one host only and spread it to all host.
+`$ sup production build pull` will build Docker image on one production host only and spread it to all hosts.
 
 ### Local command
 
