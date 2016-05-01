@@ -19,13 +19,14 @@ Stack Up is a simple deployment tool that performs given set of commands on mult
 
 ### Options
 
-| Option            | Description                                  |
-|-------------------|----------------------------------------------|
-| `--help`, `-h`    | Print help/usage                             |
-| `--version`, `-v` | Print version                                |
-| `-f Supfile`      | Custom path to Supfile                       |
-| `--only REGEXP`   | Filter NETWORK hosts using regexp string     |
-| `--except REGEXP` | Filter out NETWORK hosts using regexp string |
+| Option            | Description                      |
+|-------------------|----------------------------------|
+| `-f Supfile`      | Custom path to Supfile           |
+| `-e`, `--env=[]`  | Set environment variables        |
+| `--only REGEXP`   | Filter hosts matching regexp     |
+| `--except REGEXP` | Filter out hosts matching regexp |
+| `--help`, `-h`    | Show help/usage                  |
+| `--version`, `-v` | Print version                    |
 
 ## Network
 
