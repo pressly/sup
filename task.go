@@ -5,6 +5,7 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"os/exec"
 )
 
 // Task represents a set of commands to be run.
@@ -14,48 +15,80 @@ type Task struct {
 	Clients []Client
 }
 
+func isRSYNCAvailable() bool {
+	_, err := exec.LookPath("rsync")
+	if err != nil {
+		return false
+	}
+
+	return true
+}
+
 func CreateTasks(cmd *Command, clients []Client, env string) ([]*Task, error) {
 	var tasks []*Task
 
 	// Anything to upload?
 	for _, upload := range cmd.Upload {
-		task := Task{
-			Run:   RemoteTarCommand(upload.Dst),
-			Input: NewTarStreamReader(upload.Src, upload.Exc, env),
-		}
-
-		if cmd.Once {
-			task.Clients = []Client{clients[0]}
-			tasks = append(tasks, &task)
-		} else if cmd.Serial > 0 {
-			// Each "serial" task client group is executed sequentially.
-			for i := 0; i < len(clients); i += cmd.Serial {
-				j := i + cmd.Serial
-				if j > len(clients) {
-					j = len(clients)
-				}
-				copy := task
-				copy.Clients = clients[i:j]
-				tasks = append(tasks, &copy)
-			}
-		} else {
-			task.Clients = clients
-			tasks = append(tasks, &task)
-		}
-	}
-
-	// Anything to sync?
-	for _, rsync := range cmd.RSync {
-		for _, c := range clients {
+		if isRSYNCAvailable() {
 			local := &LocalhostClient{
 				env: env + `export SUP_HOST="localhost";`,
 			}
 			local.Connect("localhost")
-			task := &Task{
-				Run:     NewRSyncCommand(rsync.Src, rsync.Dst, c.GetUser(), c.GetHost()),
-				Clients: []Client{local},
+			if cmd.Once {
+				c := clients[0]
+				task := Task{
+					Clients: []Client{local},
+					Run: NewRSyncCommand(upload.Src, upload.Dst, c.GetUser(), c.GetHost()),
+				}
+				tasks = append(tasks, &task)
+			} else if cmd.Serial > 0 {
+				// Each "serial" task client group is executed sequentially.
+				for i := 0; i < len(clients); i += cmd.Serial {
+					j := i + cmd.Serial
+					if j > len(clients) {
+						j = len(clients)
+					}
+					for _, c := range clients[i:j] {
+						task := Task{
+							Clients: []Client{local},
+							Run: NewRSyncCommand(upload.Src, upload.Dst, c.GetUser(), c.GetHost()),
+						}
+						tasks = append(tasks, &task)
+					}
+				}
+			} else {
+				for _, c := range clients {
+					task := Task{
+						Clients: []Client{local},
+						Run: NewRSyncCommand(upload.Src, upload.Dst, c.GetUser(), c.GetHost()),
+					}
+					tasks = append(tasks, &task)
+				}
 			}
-			tasks = append(tasks, task)
+		} else {
+			task := Task{
+				Run:   RemoteTarCommand(upload.Dst),
+				Input: NewTarStreamReader(upload.Src, upload.Exc, env),
+			}
+
+			if cmd.Once {
+				task.Clients = []Client{clients[0]}
+				tasks = append(tasks, &task)
+			} else if cmd.Serial > 0 {
+				// Each "serial" task client group is executed sequentially.
+				for i := 0; i < len(clients); i += cmd.Serial {
+					j := i + cmd.Serial
+					if j > len(clients) {
+						j = len(clients)
+					}
+					copy := task
+					copy.Clients = clients[i:j]
+					tasks = append(tasks, &copy)
+				}
+			} else {
+				task.Clients = clients
+				tasks = append(tasks, &task)
+			}
 		}
 	}
 
