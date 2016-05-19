@@ -36,7 +36,7 @@ func (sup *Stackup) Run(network *Network, commands ...*Command) error {
 	// `export FOO="bar"; export BAR="baz";`.
 	env := ``
 	for _, v := range append(sup.conf.Env, network.Env...) {
-		env += v.AsExport() + " "
+		env += v.String() + " "
 	}
 
 	// Create clients for every host (either SSH or Localhost).
@@ -67,7 +67,7 @@ func (sup *Stackup) Run(network *Network, commands ...*Command) error {
 
 		// SSH client.
 		remote := &SSHClient{
-			env:   env + `export SUP_HOST="` + host + `";`,
+			env:   env + `SUP_HOST="` + host + `"`,
 			color: Colors[i%len(Colors)],
 		}
 
@@ -81,6 +81,8 @@ func (sup *Stackup) Run(network *Network, commands ...*Command) error {
 			}
 		}
 		defer remote.Close()
+		remote.getShell()
+
 		clients = append(clients, remote)
 	}
 

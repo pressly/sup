@@ -7,6 +7,7 @@ import (
 	"net"
 	"os"
 	"os/user"
+	"path/filepath"
 	"strings"
 	"sync"
 
@@ -28,6 +29,7 @@ type SSHClient struct {
 	running      bool
 	env          string //export FOO="bar"; export BAR="baz";
 	color        string
+	shell        string
 }
 
 type ErrConnect struct {
@@ -149,8 +151,8 @@ func (c *SSHClient) ConnectWith(host string, dialer SSHDialFunc) error {
 	return nil
 }
 
-// Run runs the task.Run command remotely on c.host.
-func (c *SSHClient) Run(task *Task) error {
+// NewSession creates a new session within a SSH connection and connects IN/OUT pipes
+func (c *SSHClient) NewSession() error {
 	if c.running {
 		return fmt.Errorf("Session already running")
 	}
@@ -181,8 +183,18 @@ func (c *SSHClient) Run(task *Task) error {
 	c.sess = sess
 	c.sessOpened = true
 
+	return nil
+}
+
+// Run runs the task.Run command remotely on c.host.
+func (c *SSHClient) Run(task *Task) error {
+	// Start a new session
+	if err := c.NewSession(); err != nil {
+		return err
+	}
+
 	// Start the remote command.
-	if err := c.sess.Start(c.env + "set -x;" + task.Run); err != nil {
+	if err := c.sess.Start(c.buildComand(task)); err != nil {
 		return ErrTask{task, err.Error()}
 	}
 
@@ -206,16 +218,16 @@ func (c *SSHClient) Wait() error {
 }
 
 // DialThrough will create a new connection from the ssh server sc is connected to. DialThrough is an SSHDialer.
-func (sc *SSHClient) DialThrough(net, addr string, config *ssh.ClientConfig) (*ssh.Client, error) {
-	conn, err := sc.conn.Dial(net, addr)
+func (c *SSHClient) DialThrough(net, addr string, config *ssh.ClientConfig) (*ssh.Client, error) {
+	conn, err := c.conn.Dial(net, addr)
 	if err != nil {
 		return nil, err
 	}
-	c, chans, reqs, err := ssh.NewClientConn(conn, addr, config)
+	cl, chans, reqs, err := ssh.NewClientConn(conn, addr, config)
 	if err != nil {
 		return nil, err
 	}
-	return ssh.NewClient(c, chans, reqs), nil
+	return ssh.NewClient(cl, chans, reqs), nil
 
 }
 
@@ -259,4 +271,48 @@ func (c *SSHClient) Write(p []byte) (n int, err error) {
 
 func (c *SSHClient) WriteClose() error {
 	return c.remoteStdin.Close()
+}
+
+func (c *SSHClient) getShell() error {
+	// Start a new session
+	if err := c.NewSession(); err != nil {
+		return err
+	}
+
+	if err := c.sess.Start(`echo "$SHELL"`); err != nil {
+		return err
+	}
+	c.running = true
+
+	resp, err := ioutil.ReadAll(c.Stdout())
+	if err != nil && err != io.EOF {
+		return err
+	}
+	if err := c.Wait(); err != nil {
+		return err
+	}
+
+	c.shell = string(resp)
+
+	return nil
+}
+
+func (c *SSHClient) buildComand(task *Task) string {
+	inter := strings.TrimSpace(task.Interpreter)
+	if inter == "" {
+		inter = strings.TrimSpace(c.shell)
+	}
+	_, i := filepath.Split(inter)
+
+	switch inter {
+	case "bash", "sh", "zsh", "ksh", "tcsh":
+		return fmt.Sprintf("/usr/bin/env %s %s -c \"set -x\n%s\"", c.env, i, strings.Replace(task.Run, `"`, `\"`, -1))
+
+	// TODO: add support for python already called via env
+	case "python", "python3":
+		return fmt.Sprintf("/usr/bin/env %s %s -c \"%s\"", c.env, i, strings.Replace(task.Run, `"`, `\"`, -1))
+
+	default:
+		return fmt.Sprintf("/usr/bin/env %s bash -c \"set -x\n%s\"", c.env, strings.Replace(task.Run, `"`, `\"`, -1))
+	}
 }
