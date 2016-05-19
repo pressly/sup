@@ -67,7 +67,7 @@ func (sup *Stackup) Run(network *Network, commands ...*Command) error {
 
 		// SSH client.
 		remote := &SSHClient{
-			env:   env + `SUP_HOST="` + host + `"`,
+			env:   env + `SUP_HOST="` + host + `" PATH=$PATH`,
 			color: Colors[i%len(Colors)],
 		}
 

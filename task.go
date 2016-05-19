@@ -63,9 +63,10 @@ func CreateTasks(cmd *Command, clients []Client, env string) ([]*Task, error) {
 			rd.Reset(f)
 		}
 		for {
-			line, err := rd.ReadSlice('\n')
+			line, _, err := rd.ReadLine()
 			if len(line) > 0 {
 				data = append(data, line...)
+				data = append(data, '\n')
 			}
 
 			if err != nil {
