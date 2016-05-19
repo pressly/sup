@@ -306,13 +306,13 @@ func (c *SSHClient) buildComand(task *Task) string {
 
 	switch inter {
 	case "bash", "sh", "zsh", "ksh", "tcsh":
-		return fmt.Sprintf("/usr/bin/env %s %s -c \"set -x\n%s\"", c.env, i, strings.Replace(task.Run, `"`, `\"`, -1))
+		return fmt.Sprintf("/usr/bin/env %s %s -c 'set -x\n%s'", c.env, i, strings.Replace(task.Run, `'`, `\'`, -1))
 
 	// TODO: add support for python already called via env
 	case "python", "python3":
-		return fmt.Sprintf("/usr/bin/env %s %s -c \"%s\"", c.env, i, strings.Replace(task.Run, `"`, `\"`, -1))
+		return fmt.Sprintf("/usr/bin/env %s %s -c '%s'", c.env, i, strings.Replace(task.Run, `'`, `\'`, -1))
 
 	default:
-		return fmt.Sprintf("/usr/bin/env %s bash -c \"set -x\n%s\"", c.env, strings.Replace(task.Run, `"`, `\"`, -1))
+		return fmt.Sprintf("/usr/bin/env %s bash -c 'set -x\n%s'", c.env, strings.Replace(task.Run, `'`, `\'`, -1))
 	}
 }

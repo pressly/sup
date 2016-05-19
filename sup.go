@@ -36,7 +36,7 @@ func (sup *Stackup) Run(network *Network, commands ...*Command) error {
 	// `export FOO="bar"; export BAR="baz";`.
 	env := ``
 	for _, v := range append(sup.conf.Env, network.Env...) {
-		env += v.String() + " "
+		env += v.QuotedString() + " "
 	}
 
 	// Create clients for every host (either SSH or Localhost).
