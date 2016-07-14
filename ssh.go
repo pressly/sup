@@ -182,7 +182,8 @@ func (c *SSHClient) Run(task *Task) error {
 	c.sessOpened = true
 
 	// Start the remote command.
-	if err := c.sess.Start(c.env + "set -x;" + task.Run); err != nil {
+	cmd := fmt.Sprintf("/bin/sh -c '%sset -x; %s'", c.env, task.Run)
+	if err := c.sess.Start(cmd); err != nil {
 		return ErrTask{task, err.Error()}
 	}
 
