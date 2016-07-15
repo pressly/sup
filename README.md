@@ -253,11 +253,13 @@ targets:
     - date
 ```
 
-### Default environment variables you can use
+### Default environment variables available in Supfile
 
-- `$SUP_NETWORK` - Network selected by current user.
-- `$SUP_USER` - Current user who invoked the sup command.
-- `$SUP_TIME` - Date and time of the original command line invocation.
+- `$SUP_HOST` - Current host.
+- `$SUP_NETWORK` - Current network.
+- `$SUP_USER` - User who invoked sup command.
+- `$SUP_TIME` - Date/time of sup command invocation.
+- `$SUP_ENV` - Environment variables provided on sup command invocation. 
 
 # Development
 

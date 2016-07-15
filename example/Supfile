@@ -1,6 +1,6 @@
 # Supfile for "Example" Docker service
 ---
-version: 0.3
+version: 0.4
 
 env:
   # Environment variables for all commands
@@ -46,7 +46,7 @@ commands:
 
   build:
     desc: Build Docker image from current directory, push to Docker Hub
-    # local: sup -f ./builder/Supfile $SUP_NETWORK build
+    # local: sup $SUP_ENV -f ./builder/Supfile $SUP_NETWORK build
     upload:
       - src: ./
         dst: /tmp/$IMAGE
