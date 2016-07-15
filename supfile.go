@@ -41,6 +41,7 @@ type Command struct {
 	Stdin  bool     `yaml:"stdin"`  // Attach localhost STDOUT to remote commands' STDIN?
 	Once   bool     `yaml:"once"`   // The command should be run "once" (on one host only).
 	Serial int      `yaml:"serial"` // Max number of clients processing a task in parallel.
+	Sudo   bool     `yaml:"sudo"`   // Prompts for sudo password locally and wraps tasks in sudo
 
 	// API backward compatibility. Will be deprecated in v1.0.
 	RunOnce bool `yaml:"run_once"` // The command should be run once only.

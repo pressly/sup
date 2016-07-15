@@ -1,10 +1,12 @@
 package sup
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"strings"
 	"sync"
 
@@ -92,6 +94,19 @@ func (sup *Stackup) Run(network *Network, commands ...*Command) error {
 		}
 	}
 
+	// if any cmd needs sudo preload the password so it's not needed 3 commands in
+	var pass string
+	for _, cmd := range commands {
+		if cmd.Sudo {
+			var err error
+			pass, err = prompt(fmt.Sprintf("sudo password for hosts:"))
+			if err != nil {
+				return err
+			}
+			break
+		}
+	}
+
 	// Run command or run multiple commands defined by target sequentially.
 	for _, cmd := range commands {
 		// Translate command into task(s).
@@ -104,6 +119,17 @@ func (sup *Stackup) Run(network *Network, commands ...*Command) error {
 		for _, task := range tasks {
 			var writers []io.Writer
 			var wg sync.WaitGroup
+
+			if cmd.Sudo {
+				task.Run = fmt.Sprintf("sudo -S %s", task.Run)
+				passReader := bytes.NewReader([]byte(pass + "\n"))
+				if task.Input != nil {
+					// we have another reader as input - prepend the password with a \n
+					task.Input = io.MultiReader(passReader, task.Input)
+				} else {
+					task.Input = passReader
+				}
+			}
 
 			// Run tasks on the provided clients.
 			for _, c := range task.Clients {
@@ -187,4 +213,45 @@ func (sup *Stackup) Run(network *Network, commands ...*Command) error {
 	}
 
 	return nil
+}
+
+func prompt(s string) (string, error) {
+	fmt.Fprintln(os.Stderr, s)
+	echoOff()
+	defer echoOn()
+
+	return readline()
+}
+
+func echoOff() {
+	cmd := exec.Command("/bin/stty", "-echo")
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	cmd.Run()
+}
+
+func echoOn() {
+	cmd := exec.Command("/bin/stty", "echo")
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	cmd.Run()
+}
+
+func readline() (string, error) {
+	var out []byte
+	b := []byte{0}
+	for {
+		n, err := os.Stdin.Read(b)
+		if err != nil && err != io.EOF {
+			return "", err
+		}
+
+		if n == 0 || b[0] == '\n' {
+			break
+		}
+		out = append(out, b[0])
+	}
+	return strings.TrimSuffix(string(out), "\r"), nil
 }
