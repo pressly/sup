@@ -260,3 +260,11 @@ func (c *SSHClient) Write(p []byte) (n int, err error) {
 func (c *SSHClient) WriteClose() error {
 	return c.remoteStdin.Close()
 }
+
+func (c *SSHClient) GetHost() string {
+	return c.host
+}
+
+func (c *SSHClient) GetUser() string {
+	return c.user
+}
