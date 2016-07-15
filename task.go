@@ -1,17 +1,18 @@
 package sup
 
 import (
+	"bufio"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 )
 
 // Task represents a set of commands to be run.
 type Task struct {
-	Run     string
-	Input   io.Reader
-	Clients []Client
+	Interpreter string
+	Run         string
+	Input       io.Reader
+	Clients     []Client
 }
 
 func CreateTasks(cmd *Command, clients []Client, env string) ([]*Task, error) {
@@ -50,13 +51,35 @@ func CreateTasks(cmd *Command, clients []Client, env string) ([]*Task, error) {
 		if err != nil {
 			return nil, err
 		}
-		data, err := ioutil.ReadAll(f)
+		rd := bufio.NewReader(f)
+		fLine, _, err := rd.ReadLine()
 		if err != nil {
 			return nil, err
 		}
+		var hashbang, data []byte
+		if len(fLine) > 2 && fLine[0] == '#' && fLine[1] == '!' {
+			hashbang = fLine[2:len(fLine)]
+		} else {
+			rd.Reset(f)
+		}
+		for {
+			line, _, err := rd.ReadLine()
+			if len(line) > 0 {
+				data = append(data, line...)
+				data = append(data, '\n')
+			}
+
+			if err != nil {
+				if err != io.EOF {
+					return nil, err
+				}
+				break
+			}
+		}
 
 		task := Task{
-			Run: string(data),
+			Interpreter: string(hashbang),
+			Run:         string(data),
 		}
 		if cmd.Stdin {
 			task.Input = os.Stdin
