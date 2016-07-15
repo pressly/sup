@@ -40,11 +40,7 @@ func (sup *Stackup) Run(network *Network, commands ...*Command) error {
 	}
 
 	// Create clients for every host (either SSH or Localhost).
-	var (
-		clients []Client
-		bastion *SSHClient
-	)
-
+	var bastion *SSHClient
 	if network.Bastion != "" {
 		bastion = &SSHClient{}
 		if err := bastion.Connect(network.Bastion); err != nil {
@@ -52,44 +48,66 @@ func (sup *Stackup) Run(network *Network, commands ...*Command) error {
 		}
 	}
 
+	var wg sync.WaitGroup
+	clientCh := make(chan Client, len(network.Hosts))
+	errCh := make(chan error, len(network.Hosts))
+
 	for i, host := range network.Hosts {
-		// Localhost client.
-		if host == "localhost" {
-			local := &LocalhostClient{
-				env: env + `export SUP_HOST="` + host + `";`,
-			}
-			if err := local.Connect(host); err != nil {
-				return err
-			}
-			clients = append(clients, local)
-			continue
-		}
+		wg.Add(1)
+		go func(i int, host string) {
+			defer wg.Done()
 
-		// SSH client.
-		remote := &SSHClient{
-			env:   env + `export SUP_HOST="` + host + `";`,
-			color: Colors[i%len(Colors)],
-		}
+			// Localhost client.
+			if host == "localhost" {
+				local := &LocalhostClient{
+					env: env + `export SUP_HOST="` + host + `";`,
+				}
+				if err := local.Connect(host); err != nil {
+					errCh <- err
+					return
+				}
+				clientCh <- local
+				return
+			}
 
-		if bastion != nil {
-			if err := remote.ConnectWith(host, bastion.DialThrough); err != nil {
-				return err
+			// SSH client.
+			remote := &SSHClient{
+				env:   env + `export SUP_HOST="` + host + `";`,
+				color: Colors[i%len(Colors)],
 			}
-		} else {
-			if err := remote.Connect(host); err != nil {
-				return err
+
+			if bastion != nil {
+				if err := remote.ConnectWith(host, bastion.DialThrough); err != nil {
+					errCh <- err
+					return
+				}
+			} else {
+				if err := remote.Connect(host); err != nil {
+					errCh <- err
+					return
+				}
 			}
-		}
-		defer remote.Close()
-		clients = append(clients, remote)
+			clientCh <- remote
+		}(i, host)
 	}
+	wg.Wait()
+	close(clientCh)
+	close(errCh)
 
 	maxLen := 0
-	for _, c := range clients {
-		_, prefixLen := c.Prefix()
+	var clients []Client
+	for client := range clientCh {
+		if remote, ok := client.(*SSHClient); ok {
+			defer remote.Close()
+		}
+		_, prefixLen := client.Prefix()
 		if prefixLen > maxLen {
 			maxLen = prefixLen
 		}
+		clients = append(clients, client)
+	}
+	for err := range errCh {
+		return err
 	}
 
 	// Run command or run multiple commands defined by target sequentially.
