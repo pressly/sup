@@ -93,7 +93,6 @@ func parseArgs(conf *sup.Supfile) (*sup.Network, []*sup.Command, error) {
 	var commands []*sup.Command
 
 	args := flag.Args()
-
 	if len(args) < 1 {
 		networkUsage(conf)
 		return nil, nil, ErrUsage

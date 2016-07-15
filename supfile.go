@@ -2,7 +2,6 @@ package sup
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -106,6 +105,14 @@ func (e *EnvList) Set(key, value string) {
 	})
 }
 
+type ErrMustUpdate struct {
+	Msg string
+}
+
+func (e ErrMustUpdate) Error() string {
+	return fmt.Sprintf("%v\n\nPlease update sup by `go get -u github.com/pressly/sup`", e.Msg)
+}
+
 // NewSupfile parses configuration file and returns Supfile or error.
 func NewSupfile(file string) (*Supfile, error) {
 	var conf Supfile
@@ -127,7 +134,7 @@ func NewSupfile(file string) (*Supfile, error) {
 	case "0.1":
 		for _, cmd := range conf.Commands {
 			if cmd.RunOnce {
-				return nil, errors.New("command.run_once is not supported in Supfile v0.1")
+				return nil, ErrMustUpdate{"command.run_once is not supported in Supfile v" + conf.Version}
 			}
 		}
 		fallthrough
@@ -135,18 +142,18 @@ func NewSupfile(file string) (*Supfile, error) {
 	case "0.2":
 		for _, cmd := range conf.Commands {
 			if cmd.Once {
-				return nil, errors.New("command.once is not supported in Supfile v0.2")
+				return nil, ErrMustUpdate{"command.once is not supported in Supfile v" + conf.Version}
 			}
 			if cmd.Local != "" {
-				return nil, errors.New("command.local is not supported in Supfile v0.2")
+				return nil, ErrMustUpdate{"command.local is not supported in Supfile v" + conf.Version}
 			}
 			if cmd.Serial != 0 {
-				return nil, errors.New("command.serial is not supported in Supfile v0.2")
+				return nil, ErrMustUpdate{"command.serial is not supported in Supfile v" + conf.Version}
 			}
 		}
 		for _, network := range conf.Networks {
 			if network.Inventory != "" {
-				return nil, errors.New("network.inventory is not supported in Supfile v0.2")
+				return nil, ErrMustUpdate{"network.inventory is not supported in Supfile v" + conf.Version}
 			}
 		}
 		fallthrough
@@ -155,7 +162,7 @@ func NewSupfile(file string) (*Supfile, error) {
 		var warning string
 		for key, cmd := range conf.Commands {
 			if cmd.RunOnce {
-				warning = "Warning: command.run_once was deprecated by command.once in Supfile v0.3\n"
+				warning = "Warning: command.run_once was deprecated by command.once in Supfile v" + conf.Version + "\n"
 				cmd.Once = true
 				conf.Commands[key] = cmd
 			}
@@ -169,7 +176,7 @@ func NewSupfile(file string) (*Supfile, error) {
 	case "0.4":
 
 	default:
-		return nil, errors.New("unsupported version, please update sup by `go get -u github.com/pressly/sup`")
+		return nil, ErrMustUpdate{"unsupported version"}
 	}
 
 	for i, network := range conf.Networks {
