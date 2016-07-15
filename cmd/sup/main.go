@@ -242,6 +242,7 @@ func main() {
 
 	// --env flag sets environment variables and overrides values defined in Supfile
 	var vars sup.EnvList
+	var supEnv string
 	for _, env := range envVars {
 		if len(env) == 0 {
 			continue
@@ -255,7 +256,15 @@ func main() {
 		}
 		vars.Set(env[:i], env[i+1:])
 	}
-	network.Env = append(network.Env, vars...)
+	if len(vars) > 0 {
+		network.Env = append(network.Env, vars...)
+
+		// Separate loop to omit duplicated keys.
+		for _, v := range vars {
+			supEnv += fmt.Sprintf(" -e %v=%q", v.Key, v.Value)
+		}
+		network.Env.Set("SUP_ENV", strings.TrimSpace(supEnv))
+	}
 
 	// Create new Stackup app.
 	app, err := sup.New(conf)
