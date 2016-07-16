@@ -186,11 +186,11 @@ func (c *SSHClient) Run(task *Task) error {
 	}
 	// Request pseudo terminal
 	if err := sess.RequestPty("xterm", 80, 40, modes); err != nil {
-		return fmt.Errorf("request for pseudo terminal failed: %s", err)
+		return ErrTask{task, fmt.Sprintf("request for pseudo terminal failed: %s", err)}
 	}
 
 	// Start the remote command.
-	if err := c.sess.Start(c.env + "set -x;" + task.Run); err != nil {
+	if err := sess.Start(c.env + "set -x;" + task.Run); err != nil {
 		return ErrTask{task, err.Error()}
 	}
 
