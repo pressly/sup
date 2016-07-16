@@ -3,6 +3,7 @@ package sup
 import (
 	"fmt"
 	"io"
+	"os"
 	"os/exec"
 	"os/user"
 )
@@ -97,4 +98,8 @@ func (c *LocalhostClient) Write(p []byte) (n int, err error) {
 
 func (c *LocalhostClient) WriteClose() error {
 	return c.stdin.Close()
+}
+
+func (c *LocalhostClient) Signal(sig os.Signal) error {
+	return c.cmd.Process.Signal(sig)
 }
