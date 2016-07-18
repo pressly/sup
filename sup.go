@@ -211,7 +211,7 @@ func (sup *Stackup) Run(network *Network, commands ...*Command) error {
 						}
 						if e, ok := err.(*ssh.ExitError); ok && e.ExitStatus() != 15 {
 							// TODO: Store all the errors, and print them after Wait().
-							fmt.Fprintf(os.Stderr, "%v", errors.Wrap(e, prefix))
+							fmt.Fprintln(os.Stderr, errors.Wrap(e, prefix))
 							os.Exit(e.ExitStatus())
 						}
 						fmt.Fprintf(os.Stderr, "%v", errors.Wrap(err, prefix))
