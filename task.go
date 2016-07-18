@@ -5,6 +5,8 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+
+	"github.com/pkg/errors"
 )
 
 // Task represents a set of commands to be run.
@@ -12,16 +14,32 @@ type Task struct {
 	Run     string
 	Input   io.Reader
 	Clients []Client
+	TTY     bool
 }
 
 func CreateTasks(cmd *Command, clients []Client, env string) ([]*Task, error) {
 	var tasks []*Task
 
+	cwd, err := os.Getwd()
+	if err != nil {
+		return nil, errors.Wrap(err, "resolving CWD failed")
+	}
+
 	// Anything to upload?
 	for _, upload := range cmd.Upload {
+		uploadFile, err := ResolveLocalPath(cwd, upload.Src, env)
+		if err != nil {
+			return nil, errors.Wrap(err, "upload: "+upload.Src)
+		}
+		uploadTarReader, err := NewTarStreamReader(cwd, uploadFile, upload.Exc)
+		if err != nil {
+			return nil, errors.Wrap(err, "upload: "+upload.Src)
+		}
+
 		task := Task{
 			Run:   RemoteTarCommand(upload.Dst),
-			Input: NewTarStreamReader(upload.Src, upload.Exc, env),
+			Input: uploadTarReader,
+			TTY:   false,
 		}
 
 		if cmd.Once {
@@ -48,15 +66,16 @@ func CreateTasks(cmd *Command, clients []Client, env string) ([]*Task, error) {
 	if cmd.Script != "" {
 		f, err := os.Open(cmd.Script)
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "can't open script")
 		}
 		data, err := ioutil.ReadAll(f)
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "can't read script")
 		}
 
 		task := Task{
 			Run: string(data),
+			TTY: true,
 		}
 		if cmd.Stdin {
 			task.Input = os.Stdin
@@ -90,6 +109,7 @@ func CreateTasks(cmd *Command, clients []Client, env string) ([]*Task, error) {
 		task := &Task{
 			Run:     cmd.Local,
 			Clients: []Client{local},
+			TTY:     true,
 		}
 		if cmd.Stdin {
 			task.Input = os.Stdin
@@ -101,6 +121,7 @@ func CreateTasks(cmd *Command, clients []Client, env string) ([]*Task, error) {
 	if cmd.Run != "" {
 		task := Task{
 			Run: cmd.Run,
+			TTY: true,
 		}
 		if cmd.Stdin {
 			task.Input = os.Stdin
