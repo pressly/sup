@@ -3,13 +3,14 @@ package sup
 import (
 	"fmt"
 	"io"
+	"os/exec"
 	"strings"
 
-	"os/exec"
+	"github.com/pkg/errors"
 )
 
 // Copying dirs/files over SSH using TAR.
-// tar -C . -cvzf - <dirs/files> | ssh <host> "tar -C <dst_dir> -xvzf -"
+// tar -C . -cvzf - $SRC | ssh $HOST "tar -C $DST -xvzf -"
 
 // RemoteTarCommand returns command to be run on remote SSH host
 // to properly receive the created TAR stream.
@@ -18,40 +19,32 @@ func RemoteTarCommand(dir string) string {
 	return fmt.Sprintf("tar -C \"%s\" -xzf -", dir)
 }
 
-func LocalTarCommand(path, exclude string) string {
+func LocalTarCmdArgs(path, exclude string) []string {
+	args := []string{}
 
 	// Added pattens to exclude from tar compress
-	excludes := ""
-
-	result := strings.Split(exclude, ",")
-
-	for _, exclude := range result {
-		excludes += `--exclude=` + strings.TrimSpace(exclude) + ` `
+	excludes := strings.Split(exclude, ",")
+	for _, exclude := range excludes {
+		args = append(args, `--exclude=`+strings.TrimSpace(exclude))
 	}
 
-	return fmt.Sprintf("tar %s -C '.' -czf - %s", excludes, path)
+	args = append(args, "-C", ".", "-czf", "-", path)
+	return args
 }
 
 // NewTarStreamReader creates a tar stream reader from a local path.
 // TODO: Refactor. Use "archive/tar" instead.
-func NewTarStreamReader(path, exclude, env string) io.Reader {
-	cmd := exec.Command("bash", "-c", env+LocalTarCommand(path, exclude))
-
+func NewTarStreamReader(cwd, path, exclude string) (io.Reader, error) {
+	cmd := exec.Command("tar", LocalTarCmdArgs(path, exclude)...)
+	cmd.Dir = cwd
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
-		return nil
+		return nil, errors.Wrap(err, "creating stdout pipe failed")
 	}
-
-	stderr, err := cmd.StderrPipe()
-	if err != nil {
-		return nil
-	}
-
-	output := io.MultiReader(stdout, stderr)
 
 	if err := cmd.Start(); err != nil {
-		return nil
+		return nil, errors.Wrap(err, "starting cmd failed")
 	}
 
-	return output
+	return stdout, nil
 }
