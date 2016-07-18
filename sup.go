@@ -16,7 +16,9 @@ import (
 const VERSION = "0.4"
 
 type Stackup struct {
-	conf *Supfile
+	conf   *Supfile
+	debug  bool
+	prefix bool
 }
 
 func New(conf *Supfile) (*Stackup, error) {
@@ -114,7 +116,7 @@ func (sup *Stackup) Run(network *Network, commands ...*Command) error {
 	// Run command or run multiple commands defined by target sequentially.
 	for _, cmd := range commands {
 		// Translate command into task(s).
-		tasks, err := CreateTasks(cmd, clients, env)
+		tasks, err := sup.createTasks(cmd, clients, env)
 		if err != nil {
 			return errors.Wrap(err, "creating task failed")
 		}
@@ -126,9 +128,13 @@ func (sup *Stackup) Run(network *Network, commands ...*Command) error {
 
 			// Run tasks on the provided clients.
 			for _, c := range task.Clients {
-				prefix, prefixLen := c.Prefix()
-				if len(prefix) < maxLen { // Left padding.
-					prefix = strings.Repeat(" ", maxLen-prefixLen) + prefix
+				var prefix string
+				var prefixLen int
+				if sup.prefix {
+					prefix, prefixLen = c.Prefix()
+					if len(prefix) < maxLen { // Left padding.
+						prefix = strings.Repeat(" ", maxLen-prefixLen) + prefix
+					}
 				}
 
 				err := c.Run(task)
@@ -205,16 +211,22 @@ func (sup *Stackup) Run(network *Network, commands ...*Command) error {
 				go func(c Client) {
 					defer wg.Done()
 					if err := c.Wait(); err != nil {
-						prefix, prefixLen := c.Prefix()
-						if len(prefix) < maxLen { // Left padding.
-							prefix = strings.Repeat(" ", maxLen-prefixLen) + prefix
+						var prefix string
+						if sup.prefix {
+							var prefixLen int
+							prefix, prefixLen = c.Prefix()
+							if len(prefix) < maxLen { // Left padding.
+								prefix = strings.Repeat(" ", maxLen-prefixLen) + prefix
+							}
 						}
 						if e, ok := err.(*ssh.ExitError); ok && e.ExitStatus() != 15 {
 							// TODO: Store all the errors, and print them after Wait().
-							fmt.Fprintln(os.Stderr, errors.Wrap(e, prefix))
+							fmt.Fprintf(os.Stderr, "%s%v\n", prefix, e)
 							os.Exit(e.ExitStatus())
 						}
-						fmt.Fprintf(os.Stderr, "%v", errors.Wrap(err, prefix))
+						fmt.Fprintf(os.Stderr, "%s%v\n", prefix, err)
+
+						// TODO: Shouldn't os.Exit(1) here. Instead, collect the exit statuses for later.
 						os.Exit(1)
 					}
 				}(c)
@@ -230,4 +242,12 @@ func (sup *Stackup) Run(network *Network, commands ...*Command) error {
 	}
 
 	return nil
+}
+
+func (sup *Stackup) Debug(value bool) {
+	sup.debug = value
+}
+
+func (sup *Stackup) Prefix(value bool) {
+	sup.prefix = value
 }

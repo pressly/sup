@@ -17,7 +17,7 @@ type Task struct {
 	TTY     bool
 }
 
-func CreateTasks(cmd *Command, clients []Client, env string) ([]*Task, error) {
+func (sup *Stackup) createTasks(cmd *Command, clients []Client, env string) ([]*Task, error) {
 	var tasks []*Task
 
 	cwd, err := os.Getwd()
@@ -77,6 +77,9 @@ func CreateTasks(cmd *Command, clients []Client, env string) ([]*Task, error) {
 			Run: string(data),
 			TTY: true,
 		}
+		if sup.debug {
+			task.Run = "set -x;" + task.Run
+		}
 		if cmd.Stdin {
 			task.Input = os.Stdin
 		}
@@ -111,6 +114,9 @@ func CreateTasks(cmd *Command, clients []Client, env string) ([]*Task, error) {
 			Clients: []Client{local},
 			TTY:     true,
 		}
+		if sup.debug {
+			task.Run = "set -x;" + task.Run
+		}
 		if cmd.Stdin {
 			task.Input = os.Stdin
 		}
@@ -122,6 +128,9 @@ func CreateTasks(cmd *Command, clients []Client, env string) ([]*Task, error) {
 		task := Task{
 			Run: cmd.Run,
 			TTY: true,
+		}
+		if sup.debug {
+			task.Run = "set -x;" + task.Run
 		}
 		if cmd.Stdin {
 			task.Input = os.Stdin

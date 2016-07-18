@@ -19,6 +19,9 @@ var (
 	onlyHosts   string
 	exceptHosts string
 
+	debug         bool
+	disablePrefix bool
+
 	showVersion bool
 	showHelp    bool
 
@@ -46,6 +49,10 @@ func init() {
 	flag.Var(&envVars, "env", "Set environment variables")
 	flag.StringVar(&onlyHosts, "only", "", "Filter hosts using regexp")
 	flag.StringVar(&exceptHosts, "except", "", "Filter out hosts using regexp")
+
+	flag.BoolVar(&debug, "D", false, "Enable debug mode")
+	flag.BoolVar(&debug, "debug", false, "Enable debug mode")
+	flag.BoolVar(&disablePrefix, "disable-prefix", false, "Disable hostname prefix")
 
 	flag.BoolVar(&showVersion, "v", false, "Print version")
 	flag.BoolVar(&showVersion, "version", false, "Print version")
@@ -271,6 +278,8 @@ func main() {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
+	app.Debug(debug)
+	app.Prefix(!disablePrefix)
 
 	// Run all the commands in the given network.
 	err = app.Run(network, commands...)
