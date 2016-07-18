@@ -178,15 +178,17 @@ func (c *SSHClient) Run(task *Task) error {
 		return err
 	}
 
-	// Set up terminal modes
-	modes := ssh.TerminalModes{
-		ssh.ECHO:          0,     // disable echoing
-		ssh.TTY_OP_ISPEED: 14400, // input speed = 14.4kbaud
-		ssh.TTY_OP_OSPEED: 14400, // output speed = 14.4kbaud
-	}
-	// Request pseudo terminal
-	if err := sess.RequestPty("xterm", 80, 40, modes); err != nil {
-		return ErrTask{task, fmt.Sprintf("request for pseudo terminal failed: %s", err)}
+	if task.TTY {
+		// Set up terminal modes
+		modes := ssh.TerminalModes{
+			ssh.ECHO:          0,     // disable echoing
+			ssh.TTY_OP_ISPEED: 14400, // input speed = 14.4kbaud
+			ssh.TTY_OP_OSPEED: 14400, // output speed = 14.4kbaud
+		}
+		// Request pseudo terminal
+		if err := sess.RequestPty("xterm", 80, 40, modes); err != nil {
+			return ErrTask{task, fmt.Sprintf("request for pseudo terminal failed: %s", err)}
+		}
 	}
 
 	// Start the remote command.

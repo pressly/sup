@@ -39,11 +39,11 @@ func NewTarStreamReader(cwd, path, exclude string) (io.Reader, error) {
 	cmd.Dir = cwd
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
-		return nil, errors.Wrap(err, "creating stdout pipe failed")
+		return nil, errors.Wrap(err, "tar: stdout pipe failed")
 	}
 
 	if err := cmd.Start(); err != nil {
-		return nil, errors.Wrap(err, "starting cmd failed")
+		return nil, errors.Wrap(err, "tar: starting cmd failed")
 	}
 
 	return stdout, nil

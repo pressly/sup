@@ -1,7 +1,6 @@
 package sup
 
 import (
-	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -10,6 +9,7 @@ import (
 	"sync"
 
 	"github.com/goware/prefixer"
+	"github.com/pkg/errors"
 	"golang.org/x/crypto/ssh"
 )
 
@@ -45,7 +45,7 @@ func (sup *Stackup) Run(network *Network, commands ...*Command) error {
 	if network.Bastion != "" {
 		bastion = &SSHClient{}
 		if err := bastion.Connect(network.Bastion); err != nil {
-			return err
+			return errors.Wrap(err, "connecting to bastion failed")
 		}
 	}
 
@@ -64,7 +64,7 @@ func (sup *Stackup) Run(network *Network, commands ...*Command) error {
 					env: env + `export SUP_HOST="` + host + `";`,
 				}
 				if err := local.Connect(host); err != nil {
-					errCh <- err
+					errCh <- errors.Wrap(err, "connecting to localhost failed")
 					return
 				}
 				clientCh <- local
@@ -79,12 +79,12 @@ func (sup *Stackup) Run(network *Network, commands ...*Command) error {
 
 			if bastion != nil {
 				if err := remote.ConnectWith(host, bastion.DialThrough); err != nil {
-					errCh <- err
+					errCh <- errors.Wrap(err, "connecting to remote host through bastion failed")
 					return
 				}
 			} else {
 				if err := remote.Connect(host); err != nil {
-					errCh <- err
+					errCh <- errors.Wrap(err, "connecting to remote host failed")
 					return
 				}
 			}
@@ -108,7 +108,7 @@ func (sup *Stackup) Run(network *Network, commands ...*Command) error {
 		clients = append(clients, client)
 	}
 	for err := range errCh {
-		return err
+		return errors.Wrap(err, "connecting to clients failed")
 	}
 
 	// Run command or run multiple commands defined by target sequentially.
@@ -116,7 +116,7 @@ func (sup *Stackup) Run(network *Network, commands ...*Command) error {
 		// Translate command into task(s).
 		tasks, err := CreateTasks(cmd, clients, env)
 		if err != nil {
-			return fmt.Errorf("CreateTasks(): %s", err)
+			return errors.Wrap(err, "creating task failed")
 		}
 
 		// Run tasks sequentially.
@@ -133,7 +133,7 @@ func (sup *Stackup) Run(network *Network, commands ...*Command) error {
 
 				err := c.Run(task)
 				if err != nil {
-					return fmt.Errorf("%s%v", prefix, err)
+					return errors.Wrap(err, prefix+"task failed")
 				}
 
 				// Copy over tasks's STDOUT.
@@ -144,7 +144,7 @@ func (sup *Stackup) Run(network *Network, commands ...*Command) error {
 					if err != nil && err != io.EOF {
 						// TODO: io.Copy() should not return io.EOF at all.
 						// Upstream bug? Or prefixer.WriteTo() bug?
-						fmt.Fprintf(os.Stderr, "%sSTDOUT: %v", prefix, err)
+						fmt.Fprintf(os.Stderr, "%v", errors.Wrap(err, prefix+"reading STDOUT failed"))
 					}
 				}(c)
 
@@ -154,7 +154,7 @@ func (sup *Stackup) Run(network *Network, commands ...*Command) error {
 					defer wg.Done()
 					_, err := io.Copy(os.Stderr, prefixer.New(c.Stderr(), prefix))
 					if err != nil && err != io.EOF {
-						fmt.Fprintf(os.Stderr, "%sSTDERR: %v", prefix, err)
+						fmt.Fprintf(os.Stderr, "%v", errors.Wrap(err, prefix+"reading STDERR failed"))
 					}
 				}(c)
 
@@ -167,7 +167,7 @@ func (sup *Stackup) Run(network *Network, commands ...*Command) error {
 					writer := io.MultiWriter(writers...)
 					_, err := io.Copy(writer, task.Input)
 					if err != nil && err != io.EOF {
-						fmt.Fprintf(os.Stderr, "STDIN: %v", err)
+						fmt.Fprintf(os.Stderr, "%v", errors.Wrap(err, "copying STDIN failed"))
 					}
 					// TODO: Use MultiWriteCloser (not in Stdlib), so we can writer.Close() instead?
 					for _, c := range clients {
@@ -189,7 +189,7 @@ func (sup *Stackup) Run(network *Network, commands ...*Command) error {
 						for _, c := range task.Clients {
 							err := c.Signal(sig)
 							if err != nil {
-								fmt.Printf("sending signal failed: %v", err)
+								fmt.Fprintf(os.Stderr, "%v", errors.Wrap(err, "sending signal failed"))
 							}
 						}
 					}
@@ -211,10 +211,10 @@ func (sup *Stackup) Run(network *Network, commands ...*Command) error {
 						}
 						if e, ok := err.(*ssh.ExitError); ok && e.ExitStatus() != 15 {
 							// TODO: Store all the errors, and print them after Wait().
-							fmt.Fprintf(os.Stderr, "%sexit %v\n", prefix, e.ExitStatus())
+							fmt.Fprintf(os.Stderr, "%v", errors.Wrap(e, prefix))
 							os.Exit(e.ExitStatus())
 						}
-						fmt.Fprintf(os.Stderr, "%s%v\n", prefix, err)
+						fmt.Fprintf(os.Stderr, "%v", errors.Wrap(err, prefix))
 						os.Exit(1)
 					}
 				}(c)
