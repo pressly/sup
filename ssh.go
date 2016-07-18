@@ -192,7 +192,7 @@ func (c *SSHClient) Run(task *Task) error {
 	}
 
 	// Start the remote command.
-	if err := sess.Start(c.env + "set -x;" + task.Run); err != nil {
+	if err := sess.Start(c.env + task.Run); err != nil {
 		return ErrTask{task, err.Error()}
 	}
 

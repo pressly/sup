@@ -25,6 +25,8 @@ Stack Up is a simple deployment tool that performs given set of commands on mult
 | `-e`, `--env=[]`  | Set environment variables        |
 | `--only REGEXP`   | Filter hosts matching regexp     |
 | `--except REGEXP` | Filter out hosts matching regexp |
+| `--debug`, `-D`   | Enable debug/verbose mode        |
+| `--disable-prefix`| Disable hostname prefix          |
 | `--help`, `-h`    | Show help/usage                  |
 | `--version`, `-v` | Print version                    |
 
