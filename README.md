@@ -222,7 +222,7 @@ See [example Supfile](./example/Supfile).
 ```yaml
 # Supfile
 ---
-version: 0.3
+version: 0.4
 
 # Global environment variables
 env:
