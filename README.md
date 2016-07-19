@@ -261,7 +261,29 @@ targets:
 - `$SUP_NETWORK` - Current network.
 - `$SUP_USER` - User who invoked sup command.
 - `$SUP_TIME` - Date/time of sup command invocation.
-- `$SUP_ENV` - Environment variables provided on sup command invocation. 
+- `$SUP_ENV` - Environment variables provided on sup command invocation. You can pass `$SUP_ENV` to another `sup` or `docker` commands in your Supfile.
+
+# Running sup from Supfile
+
+Supfile doesn't let you import another Supfile. Instead, it lets you run `sup` sub-process from inside your Supfile. This is how you can structure larger projects:
+
+```
+./Supfile
+./database/Supfile
+./services/scheduler/Supfile
+```
+
+Top-level Supfile calls `sup` with Supfiles from sub-projects:
+```yaml
+ restart-scheduler:
+    desc: Restart scheduler
+    run: >
+      sup -f ./services/scheduler/Supfile $SUP_ENV $SUP_NETWORK restart
+ db-up:
+    desc: Migrate database
+    run: >
+      sup -f ./database/Supfile $SUP_ENV $SUP_NETWORK up
+```
 
 # Development
 
