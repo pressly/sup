@@ -110,7 +110,7 @@ type ErrMustUpdate struct {
 }
 
 func (e ErrMustUpdate) Error() string {
-	return fmt.Sprintf("%v\n\nPlease update sup by `go get -u github.com/pressly/sup`", e.Msg)
+	return fmt.Sprintf("%v\n\nPlease update sup by `go get -u github.com/pressly/sup/cmd/sup`", e.Msg)
 }
 
 // NewSupfile parses configuration file and returns Supfile or error.
