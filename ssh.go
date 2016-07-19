@@ -285,7 +285,6 @@ func (c *SSHClient) Signal(sig os.Signal) error {
 		// which sounds like something that should be fixed/resolved
 		// upstream in the golang.org/x/crypto/ssh pkg.
 		// https://github.com/golang/go/issues/4115#issuecomment-66070418
-		c.sess.Signal(ssh.SIGHUP)
 		c.remoteStdin.Write([]byte("\x03"))
 		return c.sess.Signal(ssh.SIGINT)
 	default:
