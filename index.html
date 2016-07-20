@@ -31,52 +31,64 @@
 
   <main>
     <h2 id="toc_2">Installation</h2>
-    <div><pre><code class="language-none">$ go get -u github.com/pressly/sup/cmd/sup</code></pre></div>
+    <div><pre><code class="language-yaml">$ go get -u github.com/pressly/sup/cmd/sup</code></pre></div>
 
     <h2 id="toc_3">Usage</h2>
-    <div><pre><code class="language-none">$ sup [OPTIONS] NETWORK TARGET/COMMAND [...]</code></pre></div>
+    <div><pre><code class="language-yaml">$ sup [OPTIONS] NETWORK COMMAND [...]</code></pre></div>
   </main>
 
   <aside>
     <h3 id="toc_4">Options</h3>
 
-  <table>
-  <thead>
-  <tr>
-  <th>Option</th>
-  <th>Description</th>
-  </tr>
-  </thead>
+    <table>
+      <thead>
+        <tr>
+          <th>Option</th>
+          <th>Description</th>
+        </tr>
+      </thead>
 
-  <tbody>
-  <tr>
-  <td><code>--help</code>, <code>-h</code></td>
-  <td>Print help/usage</td>
-  </tr>
-  <tr>
-  <td><code>--version</code>, <code>-v</code></td>
-  <td>Print version</td>
-  </tr>
-  <tr>
-  <td><code>-f Supfile</code></td>
-  <td>Location of Supfile</td>
-  </tr>
-  <tr>
-  <td><code>--only REGEXP</code></td>
-  <td>Filter NETWORK hosts using regexp string</td>
-  </tr>
-  <tr>
-  <td><code>--except REGEXP</code></td>
-  <td>Filter out NETWORK hosts using regexp string</td>
-  </tr>
-  </tbody>
-  </table>
+      <tbody>
+        <tr>
+          <td><code>-f Supfile</code></td>
+          <td>Custom path to Supfile</td>
+        </tr>
+        <tr>
+          <td><code>-e</code>, <code>--env=[]</code></td>
+          <td>Set environment variables</td>
+        </tr>
+        <tr>
+          <td><code>--only REGEXP</code></td>
+          <td>Filter hosts matching regexp</td>
+        </tr>
+        <tr>
+          <td><code>--except REGEXP</code></td>
+          <td>Filter out hosts matching regexp</td>
+        </tr>
+        <tr>
+          <td><code>--debug</code>, <code>-D</code></td>
+          <td>Enable debug/verbose mode</td>
+        </tr>
+        <tr>
+          <td><code>--disable-prefix</code></td>
+          <td>Disable hostname prefix</td>
+        </tr>
+        <tr>
+          <td><code>--help</code>, <code>-h</code></td>
+          <td>Show help/usage</td>
+        </tr>
+        <tr>
+          <td><code>--version</code>, <code>-v</code></td>
+          <td>Print version</td>
+        </tr>
+      </tbody>
+    </table>
 
-  <h3 id="toc_5">Network</h3>
+    <h2 id="toc_5">Network</h2>
 
-  <p>A group of hosts on which COMMAND will be invoked in parallel.</p>
+    <p>A group of hosts.</p>
 
-  <div><pre><code class="language-yaml"># Supfile
+<div><pre><code class="language-yaml"># Supfile
 
 networks:
     production:
@@ -85,18 +97,139 @@ networks:
             - api2.example.com
             - api3.example.com
     staging:
-        hosts:
-            - stg1.example.com</code></pre></div>
+        # fetch dynamic list of hosts
+        inventory: curl http://example.com/latest/meta-data/hostname</code></pre></div>
 
-  <p><code>$ sup production COMMAND</code> will invoke COMMAND on all production hosts in parallel.</p>
+<p><code>$ sup production COMMAND</code> will run COMMAND on <code>api1</code>, <code>api2</code> and <code>api3</code> hosts in parallel.</p>
 
-  <p><code>$ sup staging TARGET</code> will invoke TARGET on the staging host.</p>
+<h2 id="toc_6">Command</h2>
 
-  <h3 id="toc_6">Target</h3>
+<p>A shell command(s) to be run remotely.</p>
 
-  <p>An alias to run multiple COMMANDS.</p>
+<div><pre><code class="language-yaml"># Supfile
 
-  <div><pre><code class="language-yaml"># Supfile
+commands:
+    restart:
+        desc: Restart example Docker container
+        run: sudo docker restart example
+    tail-logs:
+        desc: Watch tail of Docker logs from all hosts
+        run: sudo docker logs --tail=20 -f example</code></pre></div>
+
+<p><code>$ sup staging restart</code> will restart all staging Docker containers in parallel.</p>
+
+<p><code>$ sup production tail-logs</code> will tail Docker logs from all production containers in parallel.</p>
+
+<h3 id="toc_7">Serial command (a.k.a. Rolling Update)</h3>
+
+<p><code>serial: N</code> constraints a command to be run on <code>N</code> hosts at a time at maximum. Rolling Update for free!</p>
+
+<div><pre><code class="language-yaml"># Supfile
+
+commands:
+    restart:
+        desc: Restart example Docker container
+        run: sudo docker restart example
+        serial: 2</code></pre></div>
+
+<p><code>$ sup production restart</code> will restart all Docker containers, two at a time at maximum.</p>
+
+<h3 id="toc_8">Once command (one host only)</h3>
+
+<p><code>once: true</code> constraints a command to be run only on one host. Useful for one-time tasks.</p>
+
+<div><pre><code class="language-yaml"># Supfile
+
+commands:
+    build:
+        desc: Build Docker image and push to registry
+        run: sudo docker build -t image:latest . &amp;&amp; sudo docker push image:latest
+        once: true # one host only
+    pull:
+        desc: Pull latest Docker image from registry
+        run: sudo docker pull image:latest</code></pre></div>
+
+<p><code>$ sup production build pull</code> will build Docker image on one production host only and spread it to all hosts.</p>
+
+<h3 id="toc_9">Local command</h3>
+
+<p>Runs command always on localhost.</p>
+
+<div><pre><code class="language-yaml"># Supfile
+
+commands:
+    prepare:
+        desc: Prepare to upload
+        local: npm run build</code></pre></div>
+
+<h3 id="toc_10">Upload command</h3>
+
+<p>Uploads files/directories to all remote hosts. Uses <code>tar</code> under the hood.</p>
+
+<div><pre><code class="language-yaml"># Supfile
+
+commands:
+    upload:
+        desc: Upload dist files to all hosts
+        upload:
+          - src: ./dist
+            dst: /tmp/</code></pre></div>
+
+<h3 id="toc_11">Interactive Bash on all hosts</h3>
+
+<p>Do you want to interact with multiple hosts at once? Sure!</p>
+
+<div><pre><code class="language-yaml"># Supfile
+
+commands:
+    bash:
+        desc: Interactive Bash on all hosts
+        stdin: true
+        run: bash</code></pre></div>
+
+<div><pre><code class="language-bash">$ sup production bash
+#
+# type in commands and see output from all hosts!
+# ^C</code></pre></div>
+
+<p>Passing prepared commands to all hosts:
+```bash
+$ echo &#39;sudo apt-get update -y&#39; | sup production bash</p>
+
+<h1 id="toc_12">or:</h1>
+
+<p>$ sup production bash &lt;&lt;&lt; &#39;sudo apt-get update -y&#39;</p>
+
+<h1 id="toc_13">or:</h1>
+
+<p>$ cat &lt;&lt;EOF | sup production bash
+sudo apt-get update -y
+date
+uname -a
+EOF
+```</p>
+
+<h3 id="toc_14">Interactive Docker Exec on all hosts</h3>
+
+<div><pre><code class="language-yaml"># Supfile
+
+commands:
+    exec:
+        desc: Exec into Docker container on all hosts
+        stdin: true
+        run: sudo docker exec -i $CONTAINER bash</code></pre></div>
+
+<div><pre><code class="language-bash">$ sup production exec
+ps aux
+strace -p 1 # trace system calls and signals on all your production hosts</code></pre></div>
+
+<h2 id="toc_15">Target</h2>
+
+<p>Target is an alias for multiple commands. Each command will be run on all hosts in parallel,
+<code>sup</code> will check return status from all hosts, and run subsequent commands on success only
+(thus any error on any host will interrupt the process).</p>
+
+<div><pre><code class="language-yaml"># Supfile
 
 targets:
     deploy:
@@ -108,47 +241,21 @@ targets:
         - slack-notify
         - airbrake-notify</code></pre></div>
 
-  <p><code>$ sup production deploy</code> will invoke <code>build</code>, <code>pull</code>, <code>migrate-db-up</code>, <code>stop-rm-run</code> and <code>slack-notify</code> commands sequentially on all production hosts.</p>
+<p><code>$ sup production deploy</code></p>
 
-  <h3 id="toc_7">Command</h3>
+<p>is equivalent to</p>
 
-  <p>A shell command (or set of commands) to be run remotely.</p>
+<p><code>$ sup production build pull migrate-db-up stop-rm-run health slack-notify airbrake-notify</code></p>
 
-  <div><pre><code class="language-yaml"># Supfile
+<h1 id="toc_16">Supfile</h1>
 
-commands:
-    restart:
-        desc: Restart example Docker container
-        run: sudo docker restart example
-    tail-logs:
-        desc: Watch tail of Docker logs from all hosts
-        run: sudo docker logs --tail=20 -f example
-    exec:
-        desc: Exec into Docker container on all hosts
-        stdin: true
-        run: sudo docker exec -i example bash
-    bash:
-        desc: Interactive Bash on all hosts
-        stdin: true
-        run: bash</code></pre></div>
+<p>See <a href="./example/Supfile">example Supfile</a>.</p>
 
-  <p><code>$ sup production restart</code> will restart all production <code>example</code> Docker containers in parallel.</p>
+<h3 id="toc_17">Basic structure</h3>
 
-  <p><code>$ sup production tail-logs</code> will tail Docker logs from all production <code>example</code> containers in parallel.</p>
-
-  <p><code>$ sup production exec</code> will Docker Exec into all production Docker containers and run interactive shell.</p>
-
-  <p><code>$ sup production bash</code> will run interactive shell on all production hosts.</p>
-
-  <h2 id="toc_8">Supfile</h2>
-
-  <p>See <a href="https://github.com/pressly/sup/blob/master/example/Supfile">example Supfile</a>.</p>
-
-  <h3 id="toc_9">Basic structure</h3>
-
-  <div><pre><code class="language-yaml"># Supfile
+<div><pre><code class="language-yaml"># Supfile
 ---
-version: 0.3
+version: 0.4
 
 # Global environment variables
 env:
@@ -180,21 +287,46 @@ targets:
     - echo
     - date</code></pre></div>
 
-  <h3 id="toc_10">Default environment variables</h3>
+<h3 id="toc_18">Default environment variables available in Supfile</h3>
 
-  <ul>
-  <li><code>$SUP_NETWORK</code> - Name of the NETWORK that the command was originally issued against.</li>
-  <li><code>$SUP_USER</code> - Name of user who issued the command.</li>
-  <li><code>$SUP_TIME</code> - Date and time of the original command line invocation.</li>
-  </ul>
+<ul>
+<li><code>$SUP_HOST</code> - Current host.</li>
+<li><code>$SUP_NETWORK</code> - Current network.</li>
+<li><code>$SUP_USER</code> - User who invoked sup command.</li>
+<li><code>$SUP_TIME</code> - Date/time of sup command invocation.</li>
+<li><code>$SUP_ENV</code> - Environment variables provided on sup command invocation. You can pass <code>$SUP_ENV</code> to another <code>sup</code> or <code>docker</code> commands in your Supfile.</li>
+</ul>
 
-  <h2 id="toc_11">Development</h2>
+<h1 id="toc_19">Running sup from Supfile</h1>
 
-  <div><pre><code class="language-none">fork it..
+<p>Supfile doesn&#39;t let you import another Supfile. Instead, it lets you run <code>sup</code> sub-process from inside your Supfile. This is how you can structure larger projects:</p>
 
-$ make tools
-$ make build</code></pre></div>
+<div><pre><code class="language-yaml">./Supfile
+./database/Supfile
+./services/scheduler/Supfile</code></pre></div>
 
+<p>Top-level Supfile calls <code>sup</code> with Supfiles from sub-projects:</p>
+
+<div><pre><code class="language-yaml">yaml
+ restart-scheduler:
+    desc: Restart scheduler
+    run: &gt;
+      sup -f ./services/scheduler/Supfile $SUP_ENV $SUP_NETWORK restart
+ db-up:
+    desc: Migrate database
+    run: &gt;
+      sup -f ./database/Supfile $SUP_ENV $SUP_NETWORK up
+</code></pre></div>
+
+<h1 id="toc_20">Development</h1>
+
+<div><pre><code class="language-yaml"># fork it, hack it..
+
+$ make build
+
+# create new Pull Request</code></pre></div>
+
+    <p>We&#39;ll be happy to review &amp; accept new Pull Requests!</p>
   </aside>
 
   <footer>

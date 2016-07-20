@@ -79,6 +79,10 @@ table {
   text-align: left;
 }
 
+th:first-child,td:first-child {
+  width: 44%;
+}
+
 header, nav, footer {
   text-align: center;
 }
@@ -171,6 +175,9 @@ img {
   margin: auto;
 }
 
+code {
+  color: orangered;
+}
 
 code[class*="language-"],
 pre[class*="language-"] {
