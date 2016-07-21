@@ -16,18 +16,21 @@ import (
 
 // Client is a wrapper over the SSH connection/sessions.
 type SSHClient struct {
-	conn         *ssh.Client
-	sess         *ssh.Session
-	user         string
-	host         string
-	remoteStdin  io.WriteCloser
-	remoteStdout io.Reader
-	remoteStderr io.Reader
-	connOpened   bool
-	sessOpened   bool
-	running      bool
-	env          string //export FOO="bar"; export BAR="baz";
-	color        string
+	conn               *ssh.Client
+	sess               *ssh.Session
+	user               string
+	host               string
+	sshKeys            []string // ssh key to use
+	remoteStdin        io.WriteCloser
+	remoteStdout       io.Reader
+	remoteStderr       io.Reader
+	connOpened         bool
+	sessOpened         bool
+	running            bool
+	env                string //export FOO="bar"; export BAR="baz";
+	color              string
+	initAuthMethodOnce sync.Once
+	authMethod         ssh.AuthMethod
 }
 
 type ErrConnect struct {
@@ -38,6 +41,15 @@ type ErrConnect struct {
 
 func (e ErrConnect) Error() string {
 	return fmt.Sprintf(`Connect("%v@%v"): %v`, e.User, e.Host, e.Reason)
+}
+
+func newSSHClient() *SSHClient {
+	return &SSHClient{
+		sshKeys: []string{
+			os.Getenv("HOME") + "/.ssh/id_rsa",
+			os.Getenv("HOME") + "/.ssh/id_dsa",
+		},
+	}
 }
 
 // parseHost parses and normalizes <user>@<host:port> from a given string.
@@ -75,11 +87,8 @@ func (c *SSHClient) parseHost(host string) error {
 	return nil
 }
 
-var initAuthMethodOnce sync.Once
-var authMethod ssh.AuthMethod
-
 // initAuthMethod initiates SSH authentication method.
-func initAuthMethod() {
+func (c *SSHClient) initAuthMethod() {
 	var signers []ssh.Signer
 
 	// If there's a running SSH Agent, try to use its Private keys.
@@ -90,11 +99,7 @@ func initAuthMethod() {
 	}
 
 	// Try to read user's SSH private keys form the standard paths.
-	files := []string{
-		os.Getenv("HOME") + "/.ssh/id_rsa",
-		os.Getenv("HOME") + "/.ssh/id_dsa",
-	}
-	for _, file := range files {
+	for _, file := range c.sshKeys {
 		data, err := ioutil.ReadFile(file)
 		if err != nil {
 			continue
@@ -106,7 +111,7 @@ func initAuthMethod() {
 		signers = append(signers, signer)
 
 	}
-	authMethod = ssh.PublicKeys(signers...)
+	c.authMethod = ssh.PublicKeys(signers...)
 }
 
 // SSHDialFunc can dial an ssh server and return a client
@@ -126,7 +131,7 @@ func (c *SSHClient) ConnectWith(host string, dialer SSHDialFunc) error {
 		return fmt.Errorf("Already connected")
 	}
 
-	initAuthMethodOnce.Do(initAuthMethod)
+	c.initAuthMethodOnce.Do(c.initAuthMethod)
 
 	err := c.parseHost(host)
 	if err != nil {
@@ -136,7 +141,7 @@ func (c *SSHClient) ConnectWith(host string, dialer SSHDialFunc) error {
 	config := &ssh.ClientConfig{
 		User: c.user,
 		Auth: []ssh.AuthMethod{
-			authMethod,
+			c.authMethod,
 		},
 	}
 

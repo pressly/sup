@@ -19,6 +19,7 @@ type Stackup struct {
 	conf   *Supfile
 	debug  bool
 	prefix bool
+	sshKey string
 }
 
 func New(conf *Supfile) (*Stackup, error) {
@@ -45,7 +46,7 @@ func (sup *Stackup) Run(network *Network, commands ...*Command) error {
 	// Create clients for every host (either SSH or Localhost).
 	var bastion *SSHClient
 	if network.Bastion != "" {
-		bastion = &SSHClient{}
+		bastion = newSSHClient()
 		if err := bastion.Connect(network.Bastion); err != nil {
 			return errors.Wrap(err, "connecting to bastion failed")
 		}
@@ -74,9 +75,11 @@ func (sup *Stackup) Run(network *Network, commands ...*Command) error {
 			}
 
 			// SSH client.
-			remote := &SSHClient{
-				env:   env + `export SUP_HOST="` + host + `";`,
-				color: Colors[i%len(Colors)],
+			remote := newSSHClient()
+			remote.env = env + `export SUP_HOST="` + host + `";`
+			remote.color = Colors[i%len(Colors)]
+			if sup.sshKey != "" {
+				remote.sshKeys = []string{sup.sshKey}
 			}
 
 			if bastion != nil {
@@ -250,4 +253,8 @@ func (sup *Stackup) Debug(value bool) {
 
 func (sup *Stackup) Prefix(value bool) {
 	sup.prefix = value
+}
+
+func (sup *Stackup) SSHKey(value string) {
+	sup.sshKey = value
 }
