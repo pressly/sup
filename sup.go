@@ -28,6 +28,26 @@ func New(conf *Supfile) (*Stackup, error) {
 	}, nil
 }
 
+// Returns the first defined key parameter, otherwise empty string
+func firstDefinedKey(keys ...string) string {
+	for _, key := range keys {
+		if key != "" {
+			return expandHome(key)
+		}
+	}
+	return ""
+}
+
+// Expands ~/foo -> /home/user/foo
+func expandHome(path string) string {
+	if !strings.HasPrefix(path, "~/") {
+		return path
+	}
+	parts := strings.Split(path, "/")
+	parts[0] = os.Getenv("HOME")
+	return strings.Join(parts, "/")
+}
+
 // Run runs set of commands on multiple hosts defined by network sequentially.
 // TODO: This megamoth method needs a big refactor and should be split
 //       to multiple smaller methods.
@@ -78,8 +98,9 @@ func (sup *Stackup) Run(network *Network, commands ...*Command) error {
 			remote := newSSHClient()
 			remote.env = env + `export SUP_HOST="` + host + `";`
 			remote.color = Colors[i%len(Colors)]
-			if sup.sshKey != "" {
-				remote.sshKeys = []string{sup.sshKey}
+			sshKey := firstDefinedKey(sup.sshKey, network.SSHKey)
+			if sshKey != "" {
+				remote.sshKeys = []string{sshKey}
 			}
 
 			if bastion != nil {

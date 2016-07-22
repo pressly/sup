@@ -26,6 +26,7 @@ type Network struct {
 	Env       EnvList  `yaml:"env"`
 	Inventory string   `yaml:"inventory"`
 	Hosts     []string `yaml:"hosts"`
+	SSHKey    string   `yaml:"ssh-key"`
 	Bastion   string   `yaml:"bastion"` // Jump host for the environment
 }
 
