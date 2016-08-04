@@ -16,32 +16,42 @@
 		{
 			"checksumSHA1": "kALxprn17Sk/x2InsoTApX6bo50=",
 			"path": "golang.org/x/crypto/curve25519",
-			"revision": "911fafb28f4ee7c7bd483539a6c96190bbbccc3f",
-			"revisionTime": "2016-05-10T03:08:17Z"
+			"revision": "7a1054f3ac58191481dc500077c6b060f5d6c7e5",
+			"revisionTime": "2016-08-03T19:58:22Z",
+			"version": "master",
+			"versionExact": "master"
 		},
 		{
 			"checksumSHA1": "wGb//LjBPNxYHqk+dcLo7BjPXK8=",
 			"path": "golang.org/x/crypto/ed25519",
-			"revision": "911fafb28f4ee7c7bd483539a6c96190bbbccc3f",
-			"revisionTime": "2016-05-10T03:08:17Z"
+			"revision": "7a1054f3ac58191481dc500077c6b060f5d6c7e5",
+			"revisionTime": "2016-08-03T19:58:22Z",
+			"version": "master",
+			"versionExact": "master"
 		},
 		{
 			"checksumSHA1": "LXFcVx8I587SnWmKycSDEq9yvK8=",
 			"path": "golang.org/x/crypto/ed25519/internal/edwards25519",
-			"revision": "911fafb28f4ee7c7bd483539a6c96190bbbccc3f",
-			"revisionTime": "2016-05-10T03:08:17Z"
+			"revision": "7a1054f3ac58191481dc500077c6b060f5d6c7e5",
+			"revisionTime": "2016-08-03T19:58:22Z",
+			"version": "master",
+			"versionExact": "master"
 		},
 		{
-			"checksumSHA1": "5orSSiv0EPveMJeWEqKRfU4tcVg=",
+			"checksumSHA1": "Lzk0xTzvdMm8Y4bErxJPSOj8iHk=",
 			"path": "golang.org/x/crypto/ssh",
-			"revision": "911fafb28f4ee7c7bd483539a6c96190bbbccc3f",
-			"revisionTime": "2016-05-10T03:08:17Z"
+			"revision": "7a1054f3ac58191481dc500077c6b060f5d6c7e5",
+			"revisionTime": "2016-08-03T19:58:22Z",
+			"version": "master",
+			"versionExact": "master"
 		},
 		{
 			"checksumSHA1": "dA/dc+Var3VnLrksziLa0Zli+YI=",
 			"path": "golang.org/x/crypto/ssh/agent",
-			"revision": "911fafb28f4ee7c7bd483539a6c96190bbbccc3f",
-			"revisionTime": "2016-05-10T03:08:17Z"
+			"revision": "7a1054f3ac58191481dc500077c6b060f5d6c7e5",
+			"revisionTime": "2016-08-03T19:58:22Z",
+			"version": "master",
+			"versionExact": "master"
 		},
 		{
 			"path": "gopkg.in/yaml.v2",
