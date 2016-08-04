@@ -21,6 +21,7 @@ dist:
 	@rm -f ./bin/*
 	GOOS=darwin GOARCH=amd64 go build -o ./bin/sup-darwin64 ./cmd/sup
 	GOOS=linux GOARCH=amd64 go build -o ./bin/sup-linux64 ./cmd/sup
+	GOOS=linux GOARCH=386 go build -o ./bin/sup-linux64 ./cmd/sup
 
 test:
 	go test ./...
