@@ -9,6 +9,8 @@ import (
 	"os/exec"
 	"strings"
 
+	"github.com/pkg/errors"
+
 	"gopkg.in/yaml.v2"
 )
 
@@ -70,7 +72,7 @@ func (e EnvVar) AsExport() string {
 
 // EnvList is a list of environment variables that maps to a YAML map,
 // but maintains order, enabling late variables to reference early variables.
-type EnvList []EnvVar
+type EnvList []*EnvVar
 
 func (e *EnvList) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	items := []yaml.MapItem{}
@@ -91,7 +93,6 @@ func (e *EnvList) UnmarshalYAML(unmarshal func(interface{}) error) error {
 
 // Set key to be equal value in this list.
 func (e *EnvList) Set(key, value string) {
-
 	for i, v := range *e {
 		if v.Key == key {
 			(*e)[i].Value = value
@@ -99,10 +100,46 @@ func (e *EnvList) Set(key, value string) {
 		}
 	}
 
-	*e = append(*e, EnvVar{
+	*e = append(*e, &EnvVar{
 		Key:   key,
 		Value: value,
 	})
+}
+
+func (e *EnvList) ResolveValues() error {
+	if len(*e) == 0 {
+		return nil
+	}
+
+	exports := ""
+	for i, v := range *e {
+		exports += v.AsExport()
+
+		cmd := exec.Command("bash", "-c", exports+"echo -n "+v.Value+";")
+		cwd, err := os.Getwd()
+		if err != nil {
+			return err
+		}
+		cmd.Dir = cwd
+		resolvedValue, err := cmd.Output()
+		if err != nil {
+			return errors.Wrapf(err, "resolving env var %v failed", v.Key)
+		}
+
+		(*e)[i].Value = string(resolvedValue)
+	}
+
+	return nil
+}
+
+func (e *EnvList) AsExport() string {
+	// Process all ENVs into a string of form
+	// `export FOO="bar"; export BAR="baz";`.
+	exports := ``
+	for _, v := range *e {
+		exports += v.AsExport() + " "
+	}
+	return exports
 }
 
 type ErrMustUpdate struct {
@@ -173,7 +210,7 @@ func NewSupfile(file string) (*Supfile, error) {
 
 		fallthrough
 
-	case "0.4":
+	case "0.4", "0.5":
 
 	default:
 		return nil, ErrMustUpdate{"unsupported version"}
