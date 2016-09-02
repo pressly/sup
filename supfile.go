@@ -213,7 +213,7 @@ func NewSupfile(file string) (*Supfile, error) {
 	case "0.4", "0.5":
 
 	default:
-		return nil, ErrMustUpdate{"unsupported version"}
+		return nil, ErrMustUpdate{"unsupported version " + conf.Version}
 	}
 
 	for i, network := range conf.Networks {
