@@ -246,8 +246,17 @@ func main() {
 		network.Hosts = hosts
 	}
 
-	// Parse --env flag environment variables and override values defined in Supfile
 	var vars sup.EnvList
+	for _, val := range append(conf.Env, network.Env...) {
+		vars.Set(val.Key, val.Value)
+	}
+	if err := vars.ResolveValues(); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+
+	// Parse CLI --env flag env vars, define $SUP_ENV and override values defined in Supfile.
+	var cliVars sup.EnvList
 	for _, env := range envVars {
 		if len(env) == 0 {
 			continue
@@ -260,14 +269,16 @@ func main() {
 			continue
 		}
 		vars.Set(env[:i], env[i+1:])
+		cliVars.Set(env[:i], env[i+1:])
 	}
 
-	vars = append(vars, conf.Env...)
-	vars = append(vars, network.Env...)
-	if err := vars.ResolveValues(); err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
+	// SUP_ENV is generated only from CLI env vars.
+	// Separate loop to omit duplicates.
+	supEnv := ""
+	for _, v := range cliVars {
+		supEnv += fmt.Sprintf(" -e %v=%q", v.Key, v.Value)
 	}
+	vars.Set("SUP_ENV", strings.TrimSpace(supEnv))
 
 	// Create new Stackup app.
 	app, err := sup.New(conf)
