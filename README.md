@@ -277,11 +277,11 @@ Top-level Supfile calls `sup` with Supfiles from sub-projects:
 ```yaml
  restart-scheduler:
     desc: Restart scheduler
-    run: >
+    local: >
       sup -f ./services/scheduler/Supfile $SUP_ENV $SUP_NETWORK restart
  db-up:
     desc: Migrate database
-    run: >
+    local: >
       sup -f ./database/Supfile $SUP_ENV $SUP_NETWORK up
 ```
 
