@@ -19,6 +19,7 @@ type SSHClient struct {
 	conn         *ssh.Client
 	sess         *ssh.Session
 	user         string
+	password     string
 	host         string
 	remoteStdin  io.WriteCloser
 	remoteStdout io.Reader
@@ -137,6 +138,7 @@ func (c *SSHClient) ConnectWith(host string, dialer SSHDialFunc) error {
 		User: c.user,
 		Auth: []ssh.AuthMethod{
 			authMethod,
+			ssh.Password(c.password),
 		},
 	}
 
