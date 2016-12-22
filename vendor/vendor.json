@@ -8,6 +8,12 @@
 			"revisionTime": "2016-01-18T12:23:47-05:00"
 		},
 		{
+			"checksumSHA1": "iS2fQC36iCVb42463vE/arPIcY4=",
+			"path": "github.com/mikkeloscar/sshconfig",
+			"revision": "fc5e37b16b6829536cf79b6fe356f14da1e77cd6",
+			"revisionTime": "2016-12-23T09:56:32Z"
+		},
+		{
 			"checksumSHA1": "GcaTbmmzSGqTb2X6qnNtmDyew1Q=",
 			"path": "github.com/pkg/errors",
 			"revision": "a2d6902c6d2a2f194eb3fb474981ab7867c81505",
