@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"regexp"
+	"sort"
 	"strings"
 	"text/tabwriter"
 	"time"
@@ -67,9 +68,14 @@ func networkUsage(conf *sup.Supfile) {
 
 	// Print available networks/hosts.
 	fmt.Fprintln(w, "Networks:\t")
-	for name, network := range conf.Networks {
+	names := make([]string, 0)
+	for name := range conf.Networks {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	for _, name := range names {
 		fmt.Fprintf(w, "- %v\n", name)
-		for _, host := range network.Hosts {
+		for _, host := range conf.Networks[name].Hosts {
 			fmt.Fprintf(w, "\t- %v\n", host)
 		}
 	}
@@ -83,13 +89,23 @@ func cmdUsage(conf *sup.Supfile) {
 
 	// Print available targets/commands.
 	fmt.Fprintln(w, "Targets:\t")
-	for name, commands := range conf.Targets {
-		fmt.Fprintf(w, "- %v\t%v\n", name, strings.Join(commands, " "))
+	names := make([]string, 0)
+	for name := range conf.Targets {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	for _, name := range names {
+		fmt.Fprintf(w, "- %v\t%v\n", name, strings.Join(conf.Targets[name], " "))
 	}
 	fmt.Fprintln(w, "\t")
 	fmt.Fprintln(w, "Commands:\t")
-	for name, cmd := range conf.Commands {
-		fmt.Fprintf(w, "- %v\t%v\n", name, cmd.Desc)
+	names = names[:0]
+	for name := range conf.Commands {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	for _, name := range names {
+		fmt.Fprintf(w, "- %v\t%v\n", name, conf.Commands[name].Desc)
 	}
 	fmt.Fprintln(w)
 }
