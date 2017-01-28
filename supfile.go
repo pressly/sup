@@ -16,7 +16,7 @@ import (
 
 // Supfile represents the Stack Up configuration YAML file.
 type Supfile struct {
-	Networks map[string]Network  `yaml:"networks"`
+	Networks Networks            `yaml:"networks"`
 	Commands map[string]Command  `yaml:"commands"`
 	Targets  map[string][]string `yaml:"targets"`
 	Env      EnvList             `yaml:"env"`
@@ -29,6 +29,37 @@ type Network struct {
 	Inventory string   `yaml:"inventory"`
 	Hosts     []string `yaml:"hosts"`
 	Bastion   string   `yaml:"bastion"` // Jump host for the environment
+}
+
+// NamedNetwork is a Network with a particular name
+type NamedNetwork struct {
+	Name string
+	Network
+}
+
+// Networks is a list of NamedNetwork
+type Networks []NamedNetwork
+
+func (n *Networks) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	var nets map[string]Network
+	err := unmarshal(&nets)
+	if err != nil {
+		return err
+	}
+
+	var items yaml.MapSlice
+	err = unmarshal(&items)
+	if err != nil {
+		return err
+	}
+
+	*n = make([]NamedNetwork, len(items))
+	for i, item := range items {
+		name := item.Key.(string)
+		(*n)[i] = NamedNetwork{Name: name, Network: nets[name]}
+	}
+
+	return nil
 }
 
 // Command represents command(s) to be run remotely.

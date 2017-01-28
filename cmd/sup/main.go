@@ -68,14 +68,9 @@ func networkUsage(conf *sup.Supfile) {
 
 	// Print available networks/hosts.
 	fmt.Fprintln(w, "Networks:\t")
-	names := make([]string, 0)
-	for name := range conf.Networks {
-		names = append(names, name)
-	}
-	sort.Strings(names)
-	for _, name := range names {
-		fmt.Fprintf(w, "- %v\n", name)
-		for _, host := range conf.Networks[name].Hosts {
+	for _, network := range conf.Networks {
+		fmt.Fprintf(w, "- %v\n", network.Name)
+		for _, host := range network.Hosts {
 			fmt.Fprintf(w, "\t- %v\n", host)
 		}
 	}
@@ -122,7 +117,14 @@ func parseArgs(conf *sup.Supfile) (*sup.Network, []*sup.Command, error) {
 	}
 
 	// Does the <network> exist?
-	network, ok := conf.Networks[args[0]]
+	var network sup.Network
+	var ok bool
+	for _, net := range conf.Networks {
+		if net.Name == args[0] {
+			network, ok = net.Network, true
+			break
+		}
+	}
 	if !ok {
 		networkUsage(conf)
 		return nil, nil, ErrUnknownNetwork
