@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"regexp"
-	"sort"
 	"strings"
 	"text/tabwriter"
 	"time"
@@ -68,8 +67,9 @@ func networkUsage(conf *sup.Supfile) {
 
 	// Print available networks/hosts.
 	fmt.Fprintln(w, "Networks:\t")
-	for _, network := range conf.Networks {
-		fmt.Fprintf(w, "- %v\n", network.Name)
+	for _, name := range conf.Networks.Names {
+		fmt.Fprintf(w, "- %v\n", name)
+		network, _ := conf.Networks.Get(name)
 		for _, host := range network.Hosts {
 			fmt.Fprintf(w, "\t- %v\n", host)
 		}
@@ -84,23 +84,15 @@ func cmdUsage(conf *sup.Supfile) {
 
 	// Print available targets/commands.
 	fmt.Fprintln(w, "Targets:\t")
-	names := make([]string, 0)
-	for name := range conf.Targets {
-		names = append(names, name)
-	}
-	sort.Strings(names)
-	for _, name := range names {
-		fmt.Fprintf(w, "- %v\t%v\n", name, strings.Join(conf.Targets[name], " "))
+	for _, name := range conf.Targets.Names {
+		cmds, _ := conf.Targets.Get(name)
+		fmt.Fprintf(w, "- %v\t%v\n", name, strings.Join(cmds, " "))
 	}
 	fmt.Fprintln(w, "\t")
 	fmt.Fprintln(w, "Commands:\t")
-	names = names[:0]
-	for name := range conf.Commands {
-		names = append(names, name)
-	}
-	sort.Strings(names)
-	for _, name := range names {
-		fmt.Fprintf(w, "- %v\t%v\n", name, conf.Commands[name].Desc)
+	for _, name := range conf.Commands.Names {
+		cmd, _ := conf.Commands.Get(name)
+		fmt.Fprintf(w, "- %v\t%v\n", name, cmd.Desc)
 	}
 	fmt.Fprintln(w)
 }
@@ -117,14 +109,7 @@ func parseArgs(conf *sup.Supfile) (*sup.Network, []*sup.Command, error) {
 	}
 
 	// Does the <network> exist?
-	var network sup.Network
-	var ok bool
-	for _, net := range conf.Networks {
-		if net.Name == args[0] {
-			network, ok = net.Network, true
-			break
-		}
-	}
+	network, ok := conf.Networks.Get(args[0])
 	if !ok {
 		networkUsage(conf)
 		return nil, nil, ErrUnknownNetwork
@@ -165,11 +150,11 @@ func parseArgs(conf *sup.Supfile) (*sup.Network, []*sup.Command, error) {
 
 	for _, cmd := range args[1:] {
 		// Target?
-		target, isTarget := conf.Targets[cmd]
+		target, isTarget := conf.Targets.Get(cmd)
 		if isTarget {
 			// Loop over target's commands.
 			for _, cmd := range target {
-				command, isCommand := conf.Commands[cmd]
+				command, isCommand := conf.Commands.Get(cmd)
 				if !isCommand {
 					cmdUsage(conf)
 					return nil, nil, fmt.Errorf("%v: %v", ErrCmd, cmd)
@@ -180,7 +165,7 @@ func parseArgs(conf *sup.Supfile) (*sup.Network, []*sup.Command, error) {
 		}
 
 		// Command?
-		command, isCommand := conf.Commands[cmd]
+		command, isCommand := conf.Commands.Get(cmd)
 		if isCommand {
 			command.Name = cmd
 			commands = append(commands, &command)
