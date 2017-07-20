@@ -25,7 +25,10 @@ func LocalTarCmdArgs(path, exclude string) []string {
 	// Added pattens to exclude from tar compress
 	excludes := strings.Split(exclude, ",")
 	for _, exclude := range excludes {
-		args = append(args, `--exclude=`+strings.TrimSpace(exclude))
+		trimmed := strings.TrimSpace(exclude)
+		if trimmed != "" {
+			args = append(args, `--exclude=`+trimmed)
+		}
 	}
 
 	args = append(args, "-C", ".", "-czf", "-", path)
