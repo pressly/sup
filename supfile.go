@@ -146,8 +146,16 @@ type ErrMustUpdate struct {
 	Msg string
 }
 
+type ErrUnsupportedSupfileVersion struct {
+	Msg string
+}
+
 func (e ErrMustUpdate) Error() string {
 	return fmt.Sprintf("%v\n\nPlease update sup by `go get -u github.com/pressly/sup/cmd/sup`", e.Msg)
+}
+
+func (e ErrUnsupportedSupfileVersion) Error() string {
+	return fmt.Sprintf("%v\n\nCheck your Supfile version (available latest version: v0.5)", e.Msg)
 }
 
 // NewSupfile parses configuration file and returns Supfile or error.
@@ -213,7 +221,7 @@ func NewSupfile(file string) (*Supfile, error) {
 	case "0.4", "0.5":
 
 	default:
-		return nil, ErrMustUpdate{"unsupported version " + conf.Version}
+		return nil, ErrUnsupportedSupfileVersion{"unsupported Supfile version " + conf.Version}
 	}
 
 	for i, network := range conf.Networks {
