@@ -305,7 +305,7 @@ if you see something like `The agent has no identities.` it means that you need 
 in order to do that, run the following command
 
 ```bash
-ssh-add -K ~/.ssh/id_rsa
+ssh-add -k ~/.ssh/id_rsa
 ```
 
 you should now be able to use sup with your ssh key.
