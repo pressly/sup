@@ -84,6 +84,14 @@ func (sup *Stackup) Run(network *Network, envVars EnvList, commands ...*Command)
 					errCh <- errors.Wrap(err, "connecting to remote host failed")
 					return
 				}
+				for _, tunnel := range network.Tunnels {
+					sshTunnel := &SSHTunnel {
+						Tunnel: tunnel,
+						SSHClient: remote,
+					}
+					go sshTunnel.StartTunnel()
+				}
+
 			}
 			clientCh <- remote
 		}(i, host)

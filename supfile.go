@@ -29,8 +29,8 @@ type Network struct {
 	Inventory string   `yaml:"inventory"`
 	Hosts     []string `yaml:"hosts"`
 	Bastion   string   `yaml:"bastion"` // Jump host for the environment
+	Tunnels   []Tunnel  `yaml:"tunnels"`// Add remote port forwarding
 }
-
 // Command represents command(s) to be run remotely.
 type Command struct {
 	Name   string   `yaml:"-"`      // Command name.
@@ -53,6 +53,13 @@ type Upload struct {
 	Src string `yaml:"src"`
 	Dst string `yaml:"dst"`
 	Exc string `yaml:"exclude"`
+}
+
+// Tunnel represents a Remote Port forwarding specification
+type Tunnel struct {
+	ListenPort int    `yaml:"listen"`
+	Host       string `yaml:"host"`
+	DstPort    int    `yaml:"port"`
 }
 
 // EnvVar represents an environment variable
