@@ -290,7 +290,7 @@ func main() {
 			conf, found := confMap[host]
 			if found {
 				network.User = conf.User
-				network.IdentityFile = conf.IdentityFile
+				network.IdentityFile = resolvePath(conf.IdentityFile)
 				network.Hosts = []string{fmt.Sprintf("%s:%d", conf.HostName, conf.Port)}
 			}
 		}

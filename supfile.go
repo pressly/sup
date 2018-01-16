@@ -29,9 +29,9 @@ type Network struct {
 	Hosts     []string `yaml:"hosts"`
 	Bastion   string   `yaml:"bastion"` // Jump host for the environment
 
-	// loaded from ssh_config
-	User         string
-	IdentityFile string
+	// Should these live on Hosts too? We'd have to change []string to struct, even in Supfile.
+	User         string // `yaml:"user"`
+	IdentityFile string // `yaml:"identity_file"`
 }
 
 // Command represents command(s) to be run remotely.
