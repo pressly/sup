@@ -50,7 +50,7 @@ func (f *flagStringSlice) Set(value string) error {
 }
 
 func init() {
-	flag.StringVar(&supfile, "f", "./Supfile", "Custom path to Supfile")
+	flag.StringVar(&supfile, "f", "", "Custom path to ./Supfile[.yml]")
 	flag.Var(&envVars, "e", "Set environment variables")
 	flag.Var(&envVars, "env", "Set environment variables")
 	flag.StringVar(&sshConfig, "sshconfig", "", "Read SSH Config file, ie. ~/.ssh/config file")
@@ -211,10 +211,18 @@ func main() {
 		return
 	}
 
+	if supfile == "" {
+		supfile = "./Supfile"
+	}
 	data, err := ioutil.ReadFile(resolvePath(supfile))
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
+		firstErr := err
+		data, err = ioutil.ReadFile("./Supfile.yml") // Alternative to ./Supfile.
+		if err != nil {
+			fmt.Fprintln(os.Stderr, firstErr)
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
 	}
 	conf, err := sup.NewSupfile(data)
 	if err != nil {
