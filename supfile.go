@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"strings"
@@ -30,9 +29,9 @@ type Network struct {
 	Hosts     []string `yaml:"hosts"`
 	Bastion   string   `yaml:"bastion"` // Jump host for the environment
 
-	// loaded from ssh_config
-	User         string
-	IdentityFile string
+	// Should these live on Hosts too? We'd have to change []string to struct, even in Supfile.
+	User         string // `yaml:"user"`
+	IdentityFile string // `yaml:"identity_file"`
 }
 
 // Networks is a list of user-defined networks
@@ -256,14 +255,10 @@ func (e ErrUnsupportedSupfileVersion) Error() string {
 }
 
 // NewSupfile parses configuration file and returns Supfile or error.
-func NewSupfile(file string) (*Supfile, error) {
+func NewSupfile(data []byte) (*Supfile, error) {
 	var conf Supfile
-	data, err := ioutil.ReadFile(file)
-	if err != nil {
-		return nil, err
-	}
-	err = yaml.Unmarshal(data, &conf)
-	if err != nil {
+
+	if err := yaml.Unmarshal(data, &conf); err != nil {
 		return nil, err
 	}
 
