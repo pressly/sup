@@ -29,6 +29,10 @@ type Network struct {
 	Inventory string   `yaml:"inventory"`
 	Hosts     []string `yaml:"hosts"`
 	Bastion   string   `yaml:"bastion"` // Jump host for the environment
+
+	// loaded from ssh_config
+	User         string
+	IdentityFile string
 }
 
 // Networks is a list of user-defined networks

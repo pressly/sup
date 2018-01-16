@@ -9,6 +9,7 @@ import (
 	"text/tabwriter"
 	"time"
 
+	"github.com/mikkeloscar/sshconfig"
 	"github.com/pkg/errors"
 	"github.com/pressly/sup"
 )
@@ -16,6 +17,7 @@ import (
 var (
 	supfile     string
 	envVars     flagStringSlice
+	sshConfig   string
 	onlyHosts   string
 	exceptHosts string
 
@@ -30,6 +32,7 @@ var (
 	ErrNetworkNoHosts   = errors.New("No hosts defined for a given network")
 	ErrCmd              = errors.New("Unknown command/target")
 	ErrTargetNoCommands = errors.New("No commands defined for a given target")
+	ErrConfigFile       = errors.New("Unknown ssh_config file")
 )
 
 type flagStringSlice []string
@@ -47,6 +50,7 @@ func init() {
 	flag.StringVar(&supfile, "f", "./Supfile", "Custom path to Supfile")
 	flag.Var(&envVars, "e", "Set environment variables")
 	flag.Var(&envVars, "env", "Set environment variables")
+	flag.StringVar(&sshConfig, "config", "", "Custom path to ssh_config file")
 	flag.StringVar(&onlyHosts, "only", "", "Filter hosts using regexp")
 	flag.StringVar(&exceptHosts, "except", "", "Filter out hosts using regexp")
 
@@ -247,6 +251,33 @@ func main() {
 			os.Exit(1)
 		}
 		network.Hosts = hosts
+	}
+
+	// --config flag location for ssh_config file
+	if sshConfig != "" {
+		confHosts, err := sshconfig.ParseSSHConfig(sshConfig)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+
+		// flatten Host -> *SSHHost, not the prettiest
+		// but will do
+		confMap := map[string]*sshconfig.SSHHost{}
+		for _, conf := range confHosts {
+			for _, host := range conf.Host {
+				confMap[host] = conf
+			}
+		}
+
+		// check network.Hosts for match
+		for _, host := range network.Hosts {
+			conf, found := confMap[host]
+			if found {
+				network.User = conf.User
+				network.IdentityFile = conf.IdentityFile
+			}
+		}
 	}
 
 	var vars sup.EnvList
