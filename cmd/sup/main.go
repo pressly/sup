@@ -3,7 +3,10 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"os"
+	"os/user"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"text/tabwriter"
@@ -50,7 +53,7 @@ func init() {
 	flag.StringVar(&supfile, "f", "./Supfile", "Custom path to Supfile")
 	flag.Var(&envVars, "e", "Set environment variables")
 	flag.Var(&envVars, "env", "Set environment variables")
-	flag.StringVar(&sshConfig, "sshconfig", "", "Custom path to ~/.ssh/config file")
+	flag.StringVar(&sshConfig, "sshconfig", "", "Read SSH Config file, ie. ~/.ssh/config file")
 	flag.StringVar(&onlyHosts, "only", "", "Filter hosts using regexp")
 	flag.StringVar(&exceptHosts, "except", "", "Filter out hosts using regexp")
 
@@ -181,6 +184,16 @@ func parseArgs(conf *sup.Supfile) (*sup.Network, []*sup.Command, error) {
 	return &network, commands, nil
 }
 
+func resolvePath(path string) string {
+	if path[:2] == "~/" {
+		usr, err := user.Current()
+		if err == nil {
+			path = filepath.Join(usr.HomeDir, path[2:])
+		}
+	}
+	return path
+}
+
 func main() {
 	flag.Parse()
 
@@ -195,7 +208,12 @@ func main() {
 		return
 	}
 
-	conf, err := sup.NewSupfile(supfile)
+	data, err := ioutil.ReadFile(resolvePath(supfile))
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+	conf, err := sup.NewSupfile(data)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
@@ -252,7 +270,7 @@ func main() {
 
 	// --sshconfig flag location for ssh_config file
 	if sshConfig != "" {
-		confHosts, err := sshconfig.ParseSSHConfig(sshConfig)
+		confHosts, err := sshconfig.ParseSSHConfig(resolvePath(sshConfig))
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
