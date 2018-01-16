@@ -50,7 +50,7 @@ func init() {
 	flag.StringVar(&supfile, "f", "./Supfile", "Custom path to Supfile")
 	flag.Var(&envVars, "e", "Set environment variables")
 	flag.Var(&envVars, "env", "Set environment variables")
-	flag.StringVar(&sshConfig, "config", "", "Custom path to ssh_config file")
+	flag.StringVar(&sshConfig, "sshconfig", "", "Custom path to ~/.ssh/config file")
 	flag.StringVar(&onlyHosts, "only", "", "Filter hosts using regexp")
 	flag.StringVar(&exceptHosts, "except", "", "Filter out hosts using regexp")
 
@@ -250,7 +250,7 @@ func main() {
 		network.Hosts = hosts
 	}
 
-	// --config flag location for ssh_config file
+	// --sshconfig flag location for ssh_config file
 	if sshConfig != "" {
 		confHosts, err := sshconfig.ParseSSHConfig(sshConfig)
 		if err != nil {
