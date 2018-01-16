@@ -22,6 +22,7 @@ Stack Up is a simple deployment tool that performs given set of commands on mult
 | Option            | Description                      |
 |-------------------|----------------------------------|
 | `-f Supfile`      | Custom path to Supfile           |
+| `-i`, `sshKey`    | Set the the ssh key to use       |
 | `-e`, `--env=[]`  | Set environment variables        |
 | `--only REGEXP`   | Filter hosts matching regexp     |
 | `--except REGEXP` | Filter out hosts matching regexp |
@@ -43,6 +44,8 @@ networks:
             - api1.example.com
             - api2.example.com
             - api3.example.com
+        # Optional, override the ssh key to use for this network
+        ssh-key: ~/.ssh/prodKey
     staging:
         # fetch dynamic list of hosts
         inventory: curl http://example.com/latest/meta-data/hostname

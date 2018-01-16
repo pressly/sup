@@ -16,6 +16,7 @@ import (
 var (
 	supfile     string
 	envVars     flagStringSlice
+	sshKey      string
 	onlyHosts   string
 	exceptHosts string
 
@@ -46,6 +47,7 @@ func (f *flagStringSlice) Set(value string) error {
 func init() {
 	flag.StringVar(&supfile, "f", "./Supfile", "Custom path to Supfile")
 	flag.Var(&envVars, "e", "Set environment variables")
+	flag.StringVar(&sshKey, "i", "", "Set the ssh key to use")
 	flag.Var(&envVars, "env", "Set environment variables")
 	flag.StringVar(&onlyHosts, "only", "", "Filter hosts using regexp")
 	flag.StringVar(&exceptHosts, "except", "", "Filter out hosts using regexp")
@@ -291,6 +293,7 @@ func main() {
 	}
 	app.Debug(debug)
 	app.Prefix(!disablePrefix)
+	app.SSHKey(sshKey)
 
 	// Run all the commands in the given network.
 	err = app.Run(network, vars, commands...)
