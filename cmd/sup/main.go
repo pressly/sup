@@ -273,6 +273,7 @@ func main() {
 			if found {
 				network.User = conf.User
 				network.IdentityFile = conf.IdentityFile
+				network.Hosts = []string{conf.HostName}
 			}
 		}
 	}
