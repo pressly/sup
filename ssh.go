@@ -7,12 +7,12 @@ import (
 	"net"
 	"os"
 	"os/user"
+	"path/filepath"
 	"strings"
 	"sync"
 
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/agent"
-	"path/filepath"
 )
 
 // Client is a wrapper over the SSH connection/sessions.
@@ -91,10 +91,12 @@ func initAuthMethod() {
 	}
 
 	// Try to read user's SSH private keys form the standard paths.
-	pubKeyFiles, _ := filepath.Glob(os.Getenv("HOME") + "/.ssh/id_*.pub")
-	for _, pubKey := range pubKeyFiles {
-		privkey := pubKey[:len(pubKey) - len(".pub")]
-		data, err := ioutil.ReadFile(privkey)
+	files, _ := filepath.Glob(os.Getenv("HOME") + "/.ssh/id_*")
+	for _, file := range files {
+		if strings.HasSuffix(file, ".pub") {
+			continue // Skip public keys.
+		}
+		data, err := ioutil.ReadFile(file)
 		if err != nil {
 			continue
 		}
