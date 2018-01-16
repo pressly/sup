@@ -216,8 +216,10 @@ func main() {
 	}
 	data, err := ioutil.ReadFile(resolvePath(supfile))
 	if err != nil {
-		data, err = ioutil.ReadFile(resolvePath("./Supfile.yml")) // Alternative to ./Supfile.
+		firstErr := err
+		data, err = ioutil.ReadFile("./Supfile.yml") // Alternative to ./Supfile.
 		if err != nil {
+			fmt.Fprintln(os.Stderr, firstErr)
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}
