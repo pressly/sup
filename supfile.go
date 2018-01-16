@@ -16,11 +16,11 @@ import (
 
 // Supfile represents the Stack Up configuration YAML file.
 type Supfile struct {
-	Networks map[string]Network  `yaml:"networks"`
-	Commands map[string]Command  `yaml:"commands"`
-	Targets  map[string][]string `yaml:"targets"`
-	Env      EnvList             `yaml:"env"`
-	Version  string              `yaml:"version"`
+	Networks Networks `yaml:"networks"`
+	Commands Commands `yaml:"commands"`
+	Targets  Targets  `yaml:"targets"`
+	Env      EnvList  `yaml:"env"`
+	Version  string   `yaml:"version"`
 }
 
 // Network is group of hosts with extra custom env vars.
@@ -29,6 +29,37 @@ type Network struct {
 	Inventory string   `yaml:"inventory"`
 	Hosts     []string `yaml:"hosts"`
 	Bastion   string   `yaml:"bastion"` // Jump host for the environment
+}
+
+// Networks is a list of user-defined networks
+type Networks struct {
+	Names []string
+	nets  map[string]Network
+}
+
+func (n *Networks) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	err := unmarshal(&n.nets)
+	if err != nil {
+		return err
+	}
+
+	var items yaml.MapSlice
+	err = unmarshal(&items)
+	if err != nil {
+		return err
+	}
+
+	n.Names = make([]string, len(items))
+	for i, item := range items {
+		n.Names[i] = item.Key.(string)
+	}
+
+	return nil
+}
+
+func (n *Networks) Get(name string) (Network, bool) {
+	net, ok := n.nets[name]
+	return net, ok
 }
 
 // Command represents command(s) to be run remotely.
@@ -45,6 +76,68 @@ type Command struct {
 
 	// API backward compatibility. Will be deprecated in v1.0.
 	RunOnce bool `yaml:"run_once"` // The command should be run once only.
+}
+
+// Commands is a list of user-defined commands
+type Commands struct {
+	Names []string
+	cmds  map[string]Command
+}
+
+func (c *Commands) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	err := unmarshal(&c.cmds)
+	if err != nil {
+		return err
+	}
+
+	var items yaml.MapSlice
+	err = unmarshal(&items)
+	if err != nil {
+		return err
+	}
+
+	c.Names = make([]string, len(items))
+	for i, item := range items {
+		c.Names[i] = item.Key.(string)
+	}
+
+	return nil
+}
+
+func (c *Commands) Get(name string) (Command, bool) {
+	cmd, ok := c.cmds[name]
+	return cmd, ok
+}
+
+// Targets is a list of user-defined targets
+type Targets struct {
+	Names   []string
+	targets map[string][]string
+}
+
+func (t *Targets) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	err := unmarshal(&t.targets)
+	if err != nil {
+		return err
+	}
+
+	var items yaml.MapSlice
+	err = unmarshal(&items)
+	if err != nil {
+		return err
+	}
+
+	t.Names = make([]string, len(items))
+	for i, item := range items {
+		t.Names[i] = item.Key.(string)
+	}
+
+	return nil
+}
+
+func (t *Targets) Get(name string) ([]string, bool) {
+	cmds, ok := t.targets[name]
+	return cmds, ok
 }
 
 // Upload represents file copy operation from localhost Src path to Dst
@@ -177,7 +270,7 @@ func NewSupfile(file string) (*Supfile, error) {
 		fallthrough
 
 	case "0.1":
-		for _, cmd := range conf.Commands {
+		for _, cmd := range conf.Commands.cmds {
 			if cmd.RunOnce {
 				return nil, ErrMustUpdate{"command.run_once is not supported in Supfile v" + conf.Version}
 			}
@@ -185,7 +278,7 @@ func NewSupfile(file string) (*Supfile, error) {
 		fallthrough
 
 	case "0.2":
-		for _, cmd := range conf.Commands {
+		for _, cmd := range conf.Commands.cmds {
 			if cmd.Once {
 				return nil, ErrMustUpdate{"command.once is not supported in Supfile v" + conf.Version}
 			}
@@ -196,7 +289,7 @@ func NewSupfile(file string) (*Supfile, error) {
 				return nil, ErrMustUpdate{"command.serial is not supported in Supfile v" + conf.Version}
 			}
 		}
-		for _, network := range conf.Networks {
+		for _, network := range conf.Networks.nets {
 			if network.Inventory != "" {
 				return nil, ErrMustUpdate{"network.inventory is not supported in Supfile v" + conf.Version}
 			}
@@ -205,11 +298,11 @@ func NewSupfile(file string) (*Supfile, error) {
 
 	case "0.3":
 		var warning string
-		for key, cmd := range conf.Commands {
+		for key, cmd := range conf.Commands.cmds {
 			if cmd.RunOnce {
 				warning = "Warning: command.run_once was deprecated by command.once in Supfile v" + conf.Version + "\n"
 				cmd.Once = true
-				conf.Commands[key] = cmd
+				conf.Commands.cmds[key] = cmd
 			}
 		}
 		if warning != "" {
@@ -224,13 +317,13 @@ func NewSupfile(file string) (*Supfile, error) {
 		return nil, ErrUnsupportedSupfileVersion{"unsupported Supfile version " + conf.Version}
 	}
 
-	for i, network := range conf.Networks {
+	for i, network := range conf.Networks.nets {
 		hosts, err := network.ParseInventory()
 		if err != nil {
 			return nil, err
 		}
 		network.Hosts = append(network.Hosts, hosts...)
-		conf.Networks[i] = network
+		conf.Networks.nets[i] = network
 	}
 
 	return &conf, nil
