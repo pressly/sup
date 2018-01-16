@@ -7,6 +7,7 @@ import (
 	"net"
 	"os"
 	"os/user"
+	"path/filepath"
 	"strings"
 	"sync"
 
@@ -90,11 +91,11 @@ func initAuthMethod() {
 	}
 
 	// Try to read user's SSH private keys form the standard paths.
-	files := []string{
-		os.Getenv("HOME") + "/.ssh/id_rsa",
-		os.Getenv("HOME") + "/.ssh/id_dsa",
-	}
+	files, _ := filepath.Glob(os.Getenv("HOME") + "/.ssh/id_*")
 	for _, file := range files {
+		if strings.HasSuffix(file, ".pub") {
+			continue // Skip public keys.
+		}
 		data, err := ioutil.ReadFile(file)
 		if err != nil {
 			continue
