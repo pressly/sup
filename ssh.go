@@ -77,7 +77,7 @@ func (c *SSHClient) parseHost(host string) error {
 }
 
 var initAuthMethodOnce sync.Once
-var authMethod ssh.AuthMethod
+var signers []ssh.Signer
 
 // initAuthMethod initiates SSH authentication method.
 func initAuthMethod() {
@@ -105,9 +105,7 @@ func initAuthMethod() {
 			continue
 		}
 		signers = append(signers, signer)
-
 	}
-	authMethod = ssh.PublicKeys(signers...)
 }
 
 // SSHDialFunc can dial an ssh server and return a client
@@ -137,7 +135,19 @@ func (c *SSHClient) ConnectWith(host string, dialer SSHDialFunc) error {
 	config := &ssh.ClientConfig{
 		User: c.user,
 		Auth: []ssh.AuthMethod{
-			authMethod,
+			ssh.PublicKeysCallback(func() ([]ssh.Signer, error) {
+				return signers, nil
+			}),
+			ssh.KeyboardInteractive(func(user string, instruction string, questions []string, echos []bool) (answers []string, err error) {
+				answers = make([]string, len(questions))
+				panic(fmt.Sprintf("%+v", questions))
+				for n, q := range questions {
+					_ = q
+					answers[n] = ""
+				}
+
+				return answers, nil
+			}),
 		},
 	}
 
