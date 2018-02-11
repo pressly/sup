@@ -321,11 +321,11 @@ targets:
 <div><pre><code class="language-yaml">yaml
  restart-scheduler:
     desc: Restart scheduler
-    run: &gt;
+    local: &gt;
       sup -f ./services/scheduler/Supfile $SUP_ENV $SUP_NETWORK restart
  db-up:
     desc: Migrate database
-    run: &gt;
+    local: &gt;
       sup -f ./database/Supfile $SUP_ENV $SUP_NETWORK up
 </code></pre></div>
 
