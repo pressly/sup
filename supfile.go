@@ -316,15 +316,6 @@ func NewSupfile(data []byte) (*Supfile, error) {
 		return nil, ErrUnsupportedSupfileVersion{"unsupported Supfile version " + conf.Version}
 	}
 
-	for i, network := range conf.Networks.nets {
-		hosts, err := network.ParseInventory()
-		if err != nil {
-			return nil, err
-		}
-		network.Hosts = append(network.Hosts, hosts...)
-		conf.Networks.nets[i] = network
-	}
-
 	return &conf, nil
 }
 

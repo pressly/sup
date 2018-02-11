@@ -122,6 +122,12 @@ func parseArgs(conf *sup.Supfile) (*sup.Network, []*sup.Command, error) {
 		return nil, nil, ErrUnknownNetwork
 	}
 
+	hosts, err := network.ParseInventory()
+	if err != nil {
+		return nil, nil, err
+	}
+	network.Hosts = append(network.Hosts, hosts...)
+
 	// Does the <network> have at least one host?
 	if len(network.Hosts) == 0 {
 		networkUsage(conf)
