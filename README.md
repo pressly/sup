@@ -277,13 +277,39 @@ Top-level Supfile calls `sup` with Supfiles from sub-projects:
 ```yaml
  restart-scheduler:
     desc: Restart scheduler
-    run: >
+    local: >
       sup -f ./services/scheduler/Supfile $SUP_ENV $SUP_NETWORK restart
  db-up:
     desc: Migrate database
-    run: >
+    local: >
       sup -f ./database/Supfile $SUP_ENV $SUP_NETWORK up
 ```
+
+# Common SSH Problem
+
+if for some reason sup doesn't connect and you get the following error,
+
+```bash
+connecting to clients failed: connecting to remote host failed: Connect("myserver@xxx.xxx.xxx.xxx"): ssh: handshake failed: ssh: unable to authenticate, attempted methods [none publickey], no supported methods remain
+```
+
+it means that your `ssh-agent` dosen't have access to your public and private keys. in order to fix this issue, follow the below instructions:
+
+- run the following command and make sure you have a key register with `ssh-agent`
+
+```bash
+ssh-add -l
+```
+
+if you see something like `The agent has no identities.` it means that you need to manually add your key to `ssh-agent`.
+in order to do that, run the following command
+
+```bash
+ssh-add ~/.ssh/id_rsa
+```
+
+you should now be able to use sup with your ssh key.
+
 
 # Development
 
