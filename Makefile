@@ -22,6 +22,8 @@ dist:
 	GOOS=darwin GOARCH=amd64 go build -o ./bin/sup-darwin64 ./cmd/sup
 	GOOS=linux GOARCH=amd64 go build -o ./bin/sup-linux64 ./cmd/sup
 	GOOS=linux GOARCH=386 go build -o ./bin/sup-linux386 ./cmd/sup
+	GOOS=windows GOARCH=amd64 go build -o ./bin/sup-windows64.exe ./cmd/sup
+	GOOS=windows GOARCH=386 go build -o ./bin/sup-windows386.exe ./cmd/sup
 
 test:
 	go test ./...
