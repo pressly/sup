@@ -18,45 +18,54 @@ import (
 
 	"github.com/pkg/errors"
 	"golang.org/x/crypto/ssh"
+	"path"
 )
-
-const privateKeyFilename = "gotest_private_key"
-const authorizedKeysFilename = "authorized_keys"
-const sshConfigFilename = "ssh_config"
 
 // setupMockEnv prepares testing environment, it
 //
+// - creates a temporary directory for all files
 // - generates RSA key pair; the private key is written into a file,
 //   fingerprint of the public key is written into a file as an authorized key
 // - spins up mock SSH servers with the same authorized key
 // - writes an SSH config file with entries for all servers, naming them
 //   server0, server1 etc.
-func setupMockEnv(sshConfigFilename string, count int) ([]bytes.Buffer, error) {
-	if err := generateKeyPair(privateKeyFilename, authorizedKeysFilename); err != nil {
-		return nil, err
+func setupMockEnv(sshConfigFilename string, count int) ([]bytes.Buffer, string, func(), error) {
+	dir, err := ioutil.TempDir("", "suptest")
+	if err != nil {
+		return nil, "", nil, err
+	}
+
+	privateKeyPath := path.Join(dir, "gotest_private_key")
+	authorizedKeysPath := path.Join(dir, "authorized_keys")
+	sshConfigPath := path.Join(dir, sshConfigFilename)
+
+	if err := generateKeyPair(privateKeyPath, authorizedKeysPath); err != nil {
+		return nil, "", nil, err
 	}
 
 	outputs := make([]bytes.Buffer, count)
 	addresses := make([]string, count)
 	for i := 0; i < count; i++ {
-		runTestServer(authorizedKeysFilename, &addresses[i], &outputs[i])
+		runTestServer(authorizedKeysPath, &addresses[i], &outputs[i])
 	}
 
-	if err := writeSSHConfigFile(privateKeyFilename, sshConfigFilename, addresses); err != nil {
-		return nil, err
+	err = writeSSHConfigFile(privateKeyPath, sshConfigPath, addresses)
+	if err != nil {
+		return nil, "", nil, err
 	}
-	return outputs, nil
+
+	return outputs, sshConfigPath, func() { os.RemoveAll(dir) }, nil
 }
 
 // generateKeyPair generates a pair of keys, the private key is written into
 // a file and the fingerprint of the public key into authorized_keys file for
 // the server to use
-func generateKeyPair(privateKeyFilename, authorizedKeysFilename string) error {
+func generateKeyPair(privateKeyPath, authorizedKeysPath string) error {
 	privateKey, err := generatePrivateRSAKey()
 	if err != nil {
 		return err
 	}
-	if err := writePrivateKeyToFile(privateKey, privateKeyFilename); err != nil {
+	if err := writePrivateKeyToFile(privateKey, privateKeyPath); err != nil {
 		return err
 	}
 
@@ -66,28 +75,32 @@ func generateKeyPair(privateKeyFilename, authorizedKeysFilename string) error {
 		return err
 	}
 
-	return ioutil.WriteFile(authorizedKeysFilename, ssh.MarshalAuthorizedKey(pub), os.ModePerm)
+	return ioutil.WriteFile(
+		authorizedKeysPath,
+		ssh.MarshalAuthorizedKey(pub),
+		0666,
+	)
 }
 
 func generatePrivateRSAKey() (*rsa.PrivateKey, error) {
 	return rsa.GenerateKey(rand.Reader, 2014)
 }
 
-func writePrivateKeyToFile(privateKey *rsa.PrivateKey, filename string) error {
+func writePrivateKeyToFile(privateKey *rsa.PrivateKey, filepath string) error {
 	privateKeyBlock := pem.Block{
 		Type:    "RSA PRIVATE KEY",
 		Headers: nil,
 		Bytes:   x509.MarshalPKCS1PrivateKey(privateKey),
 	}
 	return ioutil.WriteFile(
-		filename,
+		filepath,
 		pem.EncodeToMemory(&privateKeyBlock),
-		os.ModePerm,
+		0666,
 	)
 }
 
-func runTestServer(authorizedKeysFilename string, addr *string, out io.Writer) error {
-	authorizedKeysMap, err := loadAuthorizedKeys(authorizedKeysFilename)
+func runTestServer(authorizedKeysPath string, addr *string, out io.Writer) error {
+	authorizedKeysMap, err := loadAuthorizedKeys(authorizedKeysPath)
 	if err != nil {
 		return err
 	}
@@ -207,10 +220,10 @@ func fingerprintSHA256(pubKey ssh.PublicKey) string {
 	return "SHA256:" + hash
 }
 
-func loadAuthorizedKeys(filename string) (map[string]bool, error) {
-	authorizedKeysBytes, err := ioutil.ReadFile(filename)
+func loadAuthorizedKeys(filepath string) (map[string]bool, error) {
+	authorizedKeysBytes, err := ioutil.ReadFile(filepath)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to load %sv", filename)
+		return nil, errors.Wrapf(err, "failed to load %sv", filepath)
 	}
 	authorizedKeysMap := map[string]bool{}
 	for len(authorizedKeysBytes) > 0 {
@@ -227,7 +240,7 @@ func loadAuthorizedKeys(filename string) (map[string]bool, error) {
 
 // writes simple SSH config file for the given servers naming them server0,
 // server1 etc.
-func writeSSHConfigFile(privateKeyFilename, sshConfigFilename string, addresses []string) error {
+func writeSSHConfigFile(privateKeyPath, sshConfigPath string, addresses []string) error {
 	type sshRecord struct {
 		Host             string
 		Port             string
@@ -236,7 +249,7 @@ func writeSSHConfigFile(privateKeyFilename, sshConfigFilename string, addresses 
 	records := make([]sshRecord, len(addresses))
 	for i, addr := range addresses {
 		records[i].Host = fmt.Sprintf("server%d", i)
-		records[i].IdentityFilename = privateKeyFilename
+		records[i].IdentityFilename = privateKeyPath
 		records[i].Port = strings.Split(addr, ":")[1]
 	}
 
@@ -255,7 +268,7 @@ Host {{.Host}}
 		return err
 	}
 
-	file, err := os.Create(sshConfigFilename)
+	file, err := os.Create(sshConfigPath)
 	if err != nil {
 		return err
 	}

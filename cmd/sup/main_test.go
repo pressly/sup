@@ -11,10 +11,11 @@ import (
 )
 
 func TestSSH(t *testing.T) {
-	outputs, err := setupMockEnv(sshConfigFilename, 3)
+	outputs, sshConfigPath, cleanup, err := setupMockEnv("ssh_config", 3)
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer cleanup()
 
 	flag.CommandLine = flag.NewFlagSet("test", flag.ExitOnError)
 	flag.CommandLine.Parse([]string{"local", "t"})
@@ -50,7 +51,7 @@ targets:
 		t.Fatal(err)
 	}
 
-	confHosts, err := sshconfig.ParseSSHConfig(sshConfigFilename)
+	confHosts, err := sshconfig.ParseSSHConfig(sshConfigPath)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
