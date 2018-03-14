@@ -27,7 +27,6 @@ networks:
   local:
     hosts:
     - server0
-    - server1
     - server2
 
 commands:
@@ -93,7 +92,10 @@ targets:
 	if err != nil {
 		t.Fatal(err)
 	}
-	for i, output := range outputs {
-		t.Log(i, output.String())
-	}
+
+	m := newMatcher(outputs, t)
+	m.expectActivityOnServers(0, 2)
+	m.expectNoActivityOnServers(1)
+	m.expectExportOnActiveServers(`SUP_NETWORK="local"`)
+	m.expectCommandOnActiveServers(`echo "Hey over there"`)
 }

@@ -26,11 +26,11 @@ const sshConfigFilename = "ssh_config"
 
 // setupMockEnv prepares testing environment, it
 //
-// - generates RSA key pair
-// 	- the private key is written into a file
-//  - fingerprint of the public key is written into a file as an authorized key
+// - generates RSA key pair; the private key is written into a file,
+//   fingerprint of the public key is written into a file as an authorized key
 // - spins up mock SSH servers with the same authorized key
-// - writes an SSH config file with entries for all servers
+// - writes an SSH config file with entries for all servers, naming them
+//   server0, server1 etc.
 func setupMockEnv(sshConfigFilename string, count int) ([]bytes.Buffer, error) {
 	if err := generateKeyPair(privateKeyFilename, authorizedKeysFilename); err != nil {
 		return nil, err
