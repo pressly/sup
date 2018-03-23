@@ -18,14 +18,8 @@ import (
 )
 
 var (
-	supfile     string
-	envVars     flagStringSlice
-	sshConfig   string
-	onlyHosts   string
-	exceptHosts string
-
-	debug         bool
-	disablePrefix bool
+	supfile string
+	flags   options
 
 	showVersion bool
 	showHelp    bool
@@ -49,22 +43,32 @@ func (f *flagStringSlice) Set(value string) error {
 	return nil
 }
 
+type options struct {
+	envVars       flagStringSlice
+	sshConfig     string
+	onlyHosts     string
+	exceptHosts   string
+	debug         bool
+	disablePrefix bool
+}
+
 func init() {
 	flag.StringVar(&supfile, "f", "", "Custom path to ./Supfile[.yml]")
-	flag.Var(&envVars, "e", "Set environment variables")
-	flag.Var(&envVars, "env", "Set environment variables")
-	flag.StringVar(&sshConfig, "sshconfig", "", "Read SSH Config file, ie. ~/.ssh/config file")
-	flag.StringVar(&onlyHosts, "only", "", "Filter hosts using regexp")
-	flag.StringVar(&exceptHosts, "except", "", "Filter out hosts using regexp")
-
-	flag.BoolVar(&debug, "D", false, "Enable debug mode")
-	flag.BoolVar(&debug, "debug", false, "Enable debug mode")
-	flag.BoolVar(&disablePrefix, "disable-prefix", false, "Disable hostname prefix")
 
 	flag.BoolVar(&showVersion, "v", false, "Print version")
 	flag.BoolVar(&showVersion, "version", false, "Print version")
 	flag.BoolVar(&showHelp, "h", false, "Show help")
 	flag.BoolVar(&showHelp, "help", false, "Show help")
+
+	flag.Var(&flags.envVars, "e", "Set environment variables")
+	flag.Var(&flags.envVars, "env", "Set environment variables")
+	flag.StringVar(&flags.sshConfig, "sshconfig", "", "Read SSH Config file, ie. ~/.ssh/config file")
+	flag.StringVar(&flags.onlyHosts, "only", "", "Filter hosts using regexp")
+	flag.StringVar(&flags.exceptHosts, "except", "", "Filter out hosts using regexp")
+	flag.BoolVar(&flags.debug, "D", false, "Enable debug mode")
+	flag.BoolVar(&flags.debug, "debug", false, "Enable debug mode")
+	flag.BoolVar(&flags.disablePrefix, "disable-prefix", false, "Disable hostname prefix")
+
 }
 
 func networkUsage(conf *sup.Supfile) {
@@ -106,10 +110,9 @@ func cmdUsage(conf *sup.Supfile) {
 
 // parseArgs parses args and returns network and commands to be run.
 // On error, it prints usage and exits.
-func parseArgs(conf *sup.Supfile) (*sup.Network, []*sup.Command, error) {
+func parseArgs(args []string, conf *sup.Supfile) (*sup.Network, []*sup.Command, error) {
 	var commands []*sup.Command
 
-	args := flag.Args()
 	if len(args) < 1 {
 		networkUsage(conf)
 		return nil, nil, ErrUsage
@@ -230,25 +233,29 @@ func main() {
 			os.Exit(1)
 		}
 	}
+
+	if err := runSupfile(flags, flag.Args(), data); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+}
+
+func runSupfile(options options, args []string, data []byte) error {
 	conf, err := sup.NewSupfile(data)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
+		return err
 	}
-
-	// Parse network and commands to be run from args.
-	network, commands, err := parseArgs(conf)
+	// Parse network and commands to be run from flags.
+	network, commands, err := parseArgs(args, conf)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
+		return err
 	}
-
+	fmt.Println(network.Hosts)
 	// --only flag filters hosts
-	if onlyHosts != "" {
-		expr, err := regexp.CompilePOSIX(onlyHosts)
+	if options.onlyHosts != "" {
+		expr, err := regexp.CompilePOSIX(options.onlyHosts)
 		if err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(1)
+			return err
 		}
 
 		var hosts []string
@@ -258,39 +265,34 @@ func main() {
 			}
 		}
 		if len(hosts) == 0 {
-			fmt.Fprintln(os.Stderr, fmt.Errorf("no hosts match --only '%v' regexp", onlyHosts))
-			os.Exit(1)
+			return fmt.Errorf("no hosts match --only '%v' regexp", options.onlyHosts)
 		}
 		network.Hosts = hosts
 	}
-
 	// --except flag filters out hosts
-	if exceptHosts != "" {
-		expr, err := regexp.CompilePOSIX(exceptHosts)
+	if options.exceptHosts != "" {
+		expr, err := regexp.CompilePOSIX(options.exceptHosts)
 		if err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(1)
+			return err
 		}
 
 		var hosts []string
 		for _, host := range network.Hosts {
+			fmt.Println(host)
 			if !expr.MatchString(host) {
 				hosts = append(hosts, host)
 			}
 		}
 		if len(hosts) == 0 {
-			fmt.Fprintln(os.Stderr, fmt.Errorf("no hosts left after --except '%v' regexp", onlyHosts))
-			os.Exit(1)
+			return fmt.Errorf("no hosts left after --except '%v' regexp", options.onlyHosts)
 		}
 		network.Hosts = hosts
 	}
-
 	// --sshconfig flag location for ssh_config file
-	if sshConfig != "" {
-		confHosts, err := sshconfig.ParseSSHConfig(resolvePath(sshConfig))
+	if options.sshConfig != "" {
+		confHosts, err := sshconfig.ParseSSHConfig(resolvePath(options.sshConfig))
 		if err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(1)
+			return err
 		}
 
 		// flatten Host -> *SSHHost, not the prettiest
@@ -312,19 +314,16 @@ func main() {
 			}
 		}
 	}
-
 	var vars sup.EnvList
 	for _, val := range append(conf.Env, network.Env...) {
 		vars.Set(val.Key, val.Value)
 	}
 	if err := vars.ResolveValues(); err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
+		return err
 	}
-
 	// Parse CLI --env flag env vars, define $SUP_ENV and override values defined in Supfile.
 	var cliVars sup.EnvList
-	for _, env := range envVars {
+	for _, env := range options.envVars {
 		if len(env) == 0 {
 			continue
 		}
@@ -338,7 +337,6 @@ func main() {
 		vars.Set(env[:i], env[i+1:])
 		cliVars.Set(env[:i], env[i+1:])
 	}
-
 	// SUP_ENV is generated only from CLI env vars.
 	// Separate loop to omit duplicates.
 	supEnv := ""
@@ -346,20 +344,15 @@ func main() {
 		supEnv += fmt.Sprintf(" -e %v=%q", v.Key, v.Value)
 	}
 	vars.Set("SUP_ENV", strings.TrimSpace(supEnv))
-
 	// Create new Stackup app.
 	app, err := sup.New(conf)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
+		return err
 	}
-	app.Debug(debug)
-	app.Prefix(!disablePrefix)
+	app.Debug(options.debug)
+	app.Prefix(!options.disablePrefix)
 
 	// Run all the commands in the given network.
-	err = app.Run(network, vars, commands...)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
+	return app.Run(network, vars, commands...)
+
 }

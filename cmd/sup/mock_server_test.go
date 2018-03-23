@@ -13,12 +13,12 @@ import (
 	"io/ioutil"
 	"net"
 	"os"
+	"path"
 	"strings"
 	"text/template"
 
 	"github.com/pkg/errors"
 	"golang.org/x/crypto/ssh"
-	"path"
 )
 
 // setupMockEnv prepares testing environment, it

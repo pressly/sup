@@ -9,7 +9,6 @@ import (
 	"os/user"
 	"path/filepath"
 	"strings"
-	"sync"
 
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/agent"
@@ -30,6 +29,7 @@ type SSHClient struct {
 	running      bool
 	env          string //export FOO="bar"; export BAR="baz";
 	color        string
+	authMethod   ssh.AuthMethod
 }
 
 type ErrConnect struct {
@@ -77,44 +77,43 @@ func (c *SSHClient) parseHost(host string) error {
 	return nil
 }
 
-var initAuthMethodOnce sync.Once
-var authMethod ssh.AuthMethod
-
-// initAuthMethod initiates SSH authentication method.
-func initAuthMethod(identityFilePath string) func() {
-	return func() {
-		var signers []ssh.Signer
-
-		// If there's a running SSH Agent, try to use its Private keys.
-		sock, err := net.Dial("unix", os.Getenv("SSH_AUTH_SOCK"))
-		if err == nil {
-			agent := agent.NewClient(sock)
-			signers, _ = agent.Signers()
-		}
-
-		// Try to read user's SSH private keys form the standard paths.
-		files, _ := filepath.Glob(os.Getenv("HOME") + "/.ssh/id_*")
-		// Add nonstandard path
-		if identityFilePath != "" {
-			files = append(files, identityFilePath)
-		}
-		for _, file := range files {
-			if strings.HasSuffix(file, ".pub") {
-				continue // Skip public keys.
-			}
-			data, err := ioutil.ReadFile(file)
-			if err != nil {
-				continue
-			}
-			signer, err := ssh.ParsePrivateKey(data)
-			if err != nil {
-				continue
-			}
-			signers = append(signers, signer)
-
-		}
-		authMethod = ssh.PublicKeys(signers...)
+// ensureAuthMethod initiates SSH authentication method.
+func (c *SSHClient) ensureAuthMethod() {
+	if c.authMethod != nil {
+		return
 	}
+
+	var signers []ssh.Signer
+
+	// If there's a running SSH Agent, try to use its Private keys.
+	sock, err := net.Dial("unix", os.Getenv("SSH_AUTH_SOCK"))
+	if err == nil {
+		agent := agent.NewClient(sock)
+		signers, _ = agent.Signers()
+	}
+
+	// Try to read user's SSH private keys form the standard paths.
+	files, _ := filepath.Glob(os.Getenv("HOME") + "/.ssh/id_*")
+	// Add nonstandard path
+	if c.identityFile != "" {
+		files = append(files, c.identityFile)
+	}
+	for _, file := range files {
+		if strings.HasSuffix(file, ".pub") {
+			continue // Skip public keys.
+		}
+		data, err := ioutil.ReadFile(file)
+		if err != nil {
+			continue
+		}
+		signer, err := ssh.ParsePrivateKey(data)
+		if err != nil {
+			continue
+		}
+		signers = append(signers, signer)
+
+	}
+	c.authMethod = ssh.PublicKeys(signers...)
 }
 
 // SSHDialFunc can dial an ssh server and return a client
@@ -133,8 +132,7 @@ func (c *SSHClient) ConnectWith(host string, dialer SSHDialFunc) error {
 	if c.connOpened {
 		return fmt.Errorf("Already connected")
 	}
-
-	initAuthMethodOnce.Do(initAuthMethod(c.identityFile))
+	c.ensureAuthMethod()
 
 	err := c.parseHost(host)
 	if err != nil {
@@ -144,7 +142,7 @@ func (c *SSHClient) ConnectWith(host string, dialer SSHDialFunc) error {
 	config := &ssh.ClientConfig{
 		User: c.user,
 		Auth: []ssh.AuthMethod{
-			authMethod,
+			c.authMethod,
 		},
 	}
 
