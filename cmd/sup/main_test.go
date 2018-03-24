@@ -2,11 +2,16 @@ package main
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
 	"os/user"
 	"strings"
 	"testing"
 	"time"
+)
+
+var (
+	testErrStream = ioutil.Discard
 )
 
 func TestInvalidYaml(t *testing.T) {
@@ -18,7 +23,7 @@ version: 0.4
 efewf we
 we	kp	re
 `
-	if err := runSupfile(options{}, []string{}, []byte(input)); err == nil {
+	if err := runSupfile(testErrStream, options{}, []string{}, []byte(input)); err == nil {
 		t.Fatal("Expected an error")
 	}
 }
@@ -40,7 +45,7 @@ commands:
   step1:
     run: echo "Hey over there"
 `
-	if err := runSupfile(options{}, []string{}, []byte(input)); err != ErrUsage {
+	if err := runSupfile(testErrStream, options{}, []string{}, []byte(input)); err != ErrUsage {
 		t.Fatal(err)
 	}
 }
@@ -62,7 +67,7 @@ commands:
   step1:
     run: echo "Hey over there"
 `
-	if err := runSupfile(options{}, []string{"production"}, []byte(input)); err != ErrUnknownNetwork {
+	if err := runSupfile(testErrStream, options{}, []string{"production"}, []byte(input)); err != ErrUnknownNetwork {
 		t.Fatal(err)
 	}
 }
@@ -82,7 +87,7 @@ commands:
   step1:
     run: echo "Hey over there"
 `
-	if err := runSupfile(options{}, []string{"staging"}, []byte(input)); err != ErrNetworkNoHosts {
+	if err := runSupfile(testErrStream, options{}, []string{"staging"}, []byte(input)); err != ErrNetworkNoHosts {
 		t.Fatal(err)
 	}
 }
@@ -104,7 +109,7 @@ commands:
   step1:
     run: echo "Hey over there"
 `
-	if err := runSupfile(options{}, []string{"staging"}, []byte(input)); err != ErrUsage {
+	if err := runSupfile(testErrStream, options{}, []string{"staging"}, []byte(input)); err != ErrUsage {
 		t.Fatal(err)
 	}
 }
@@ -133,7 +138,7 @@ targets:
   - step1
   - step2
 `
-	if err := runSupfile(options{}, []string{"staging", "step5"}, []byte(input)); err == nil {
+	if err := runSupfile(testErrStream, options{}, []string{"staging", "step5"}, []byte(input)); err == nil {
 		t.Fatal("Expected an error")
 	} else if !strings.Contains(err.Error(), ErrCmd.Error()) {
 		t.Fatalf("Expected `%v` error, got `%v`", ErrCmd, err)
@@ -165,7 +170,7 @@ targets:
   - step2
   - step3
 `
-	if err := runSupfile(options{}, []string{"staging", "walk"}, []byte(input)); err == nil {
+	if err := runSupfile(testErrStream, options{}, []string{"staging", "walk"}, []byte(input)); err == nil {
 		t.Fatal("Expected an error")
 	} else if !strings.Contains(err.Error(), ErrCmd.Error()) {
 		t.Fatalf("Expected `%v` error, got `%v`", ErrCmd, err)
@@ -199,7 +204,7 @@ commands:
 		sshConfig: sshConfigPath,
 	}
 	args := []string{"staging", "step1"}
-	if err := runSupfile(options, args, []byte(input)); err != nil {
+	if err := runSupfile(testErrStream, options, args, []byte(input)); err != nil {
 		t.Fatal(err)
 	}
 
@@ -238,7 +243,7 @@ commands:
 		sshConfig: sshConfigPath,
 	}
 	args := []string{"staging", "step1", "step2"}
-	if err := runSupfile(options, args, []byte(input)); err != nil {
+	if err := runSupfile(testErrStream, options, args, []byte(input)); err != nil {
 		t.Fatal(err)
 	}
 
@@ -283,7 +288,7 @@ targets:
 		sshConfig: sshConfigPath,
 	}
 	args := []string{"staging", "walk"}
-	if err := runSupfile(options, args, []byte(input)); err != nil {
+	if err := runSupfile(testErrStream, options, args, []byte(input)); err != nil {
 		t.Fatal(err)
 	}
 
@@ -323,7 +328,7 @@ commands:
 		onlyHosts: "server2",
 	}
 	args := []string{"staging", "step1"}
-	if err := runSupfile(options, args, []byte(input)); err != nil {
+	if err := runSupfile(testErrStream, options, args, []byte(input)); err != nil {
 		t.Fatal(err)
 	}
 
@@ -354,7 +359,7 @@ commands:
 	options := options{
 		onlyHosts: "server42",
 	}
-	if err := runSupfile(options, []string{"staging", "step1"}, []byte(input)); err == nil {
+	if err := runSupfile(testErrStream, options, []string{"staging", "step1"}, []byte(input)); err == nil {
 		t.Fatal("Expected an error")
 	} else if !strings.Contains(err.Error(), "no hosts match") {
 		t.Fatalf("Expected a different error, got `%v`", err)
@@ -382,7 +387,7 @@ commands:
 	options := options{
 		onlyHosts: "server(",
 	}
-	if err := runSupfile(options, []string{"staging", "step1"}, []byte(input)); err == nil {
+	if err := runSupfile(testErrStream, options, []string{"staging", "step1"}, []byte(input)); err == nil {
 		t.Fatal("Expected an error")
 	} else if !strings.Contains(err.Error(), "error parsing regexp") {
 		t.Fatalf("Expected a different error, got `%v`", err)
@@ -418,7 +423,7 @@ commands:
 		exceptHosts: "server(1|2)",
 	}
 	args := []string{"staging", "step1"}
-	if err := runSupfile(options, args, []byte(input)); err != nil {
+	if err := runSupfile(testErrStream, options, args, []byte(input)); err != nil {
 		t.Fatal(err)
 	}
 
@@ -449,7 +454,7 @@ commands:
 	options := options{
 		exceptHosts: "server",
 	}
-	if err := runSupfile(options, []string{"staging", "step1"}, []byte(input)); err == nil {
+	if err := runSupfile(testErrStream, options, []string{"staging", "step1"}, []byte(input)); err == nil {
 		t.Fatal("Expected an error")
 	} else if !strings.Contains(err.Error(), "no hosts left") {
 		t.Fatalf("Expected a different error, got `%v`", err)
@@ -477,7 +482,7 @@ commands:
 	options := options{
 		exceptHosts: "server(",
 	}
-	if err := runSupfile(options, []string{"staging", "step1"}, []byte(input)); err == nil {
+	if err := runSupfile(testErrStream, options, []string{"staging", "step1"}, []byte(input)); err == nil {
 		t.Fatal("Expected an error")
 	} else if !strings.Contains(err.Error(), "error parsing regexp") {
 		t.Fatalf("Expected a different error, got `%v`", err)
@@ -509,7 +514,7 @@ commands:
 		sshConfig: sshConfigPath,
 	}
 	args := []string{"staging", "step1"}
-	if err := runSupfile(options, args, []byte(input)); err != nil {
+	if err := runSupfile(testErrStream, options, args, []byte(input)); err != nil {
 		t.Fatal(err)
 	}
 
@@ -535,7 +540,7 @@ commands:
     run: echo "Hey over there"
 `
 	args := []string{"staging", "step1"}
-	if err := runSupfile(options{}, args, []byte(input)); err == nil {
+	if err := runSupfile(testErrStream, options{}, args, []byte(input)); err == nil {
 		t.Fatal("Expected an error")
 	}
 }
@@ -572,7 +577,7 @@ commands:
 		options := options{
 			sshConfig: sshConfigPath,
 		}
-		if err := runSupfile(options, []string{"staging", "step1"}, []byte(input)); err != nil {
+		if err := runSupfile(testErrStream, options, []string{"staging", "step1"}, []byte(input)); err != nil {
 			t.Fatal(err)
 		}
 		currentUser, err := user.Current()
@@ -616,7 +621,7 @@ commands:
 		options := options{
 			sshConfig: sshConfigPath,
 		}
-		if err := runSupfile(options, []string{"staging", "step1"}, []byte(input)); err != nil {
+		if err := runSupfile(testErrStream, options, []string{"staging", "step1"}, []byte(input)); err != nil {
 			t.Fatal(err)
 		}
 		m := newMatcher(outputs, t)
@@ -656,7 +661,7 @@ commands:
 		options := options{
 			sshConfig: sshConfigPath,
 		}
-		if err := runSupfile(options, []string{"staging", "step1"}, []byte(input)); err != nil {
+		if err := runSupfile(testErrStream, options, []string{"staging", "step1"}, []byte(input)); err != nil {
 			t.Fatal(err)
 		}
 		m := newMatcher(outputs, t)
@@ -689,7 +694,7 @@ commands:
 		options := options{
 			sshConfig: sshConfigPath,
 		}
-		if err := runSupfile(options, []string{"staging", "step1"}, []byte(input)); err != nil {
+		if err := runSupfile(testErrStream, options, []string{"staging", "step1"}, []byte(input)); err != nil {
 			t.Fatal(err)
 		}
 		m := newMatcher(outputs, t)
@@ -728,7 +733,7 @@ commands:
 		sshConfig: sshConfigPath,
 	}
 	args := []string{"staging", "step1"}
-	if err := runSupfile(options, args, []byte(input)); err == nil {
+	if err := runSupfile(testErrStream, options, args, []byte(input)); err == nil {
 		t.Fatal("Expected an error")
 	}
 
@@ -764,7 +769,7 @@ commands:
 		sshConfig: sshConfigPath,
 	}
 	args := []string{"staging", "step1"}
-	if err := runSupfile(options, args, []byte(input)); err != nil {
+	if err := runSupfile(testErrStream, options, args, []byte(input)); err != nil {
 		t.Fatal(err)
 	}
 
@@ -806,7 +811,7 @@ commands:
 		sshConfig: sshConfigPath,
 	}
 	args := []string{"staging", "step1"}
-	if err := runSupfile(options, args, []byte(input)); err != nil {
+	if err := runSupfile(testErrStream, options, args, []byte(input)); err != nil {
 		t.Fatal(err)
 	}
 
@@ -849,7 +854,7 @@ commands:
 		envVars:   []string{"IM_HERE", "TODAYS_SPECIAL=Gazpacho"},
 	}
 	args := []string{"staging", "step1"}
-	if err := runSupfile(options, args, []byte(input)); err != nil {
+	if err := runSupfile(testErrStream, options, args, []byte(input)); err != nil {
 		t.Fatal(err)
 	}
 
@@ -894,7 +899,7 @@ commands:
 		envVars:   []string{""},
 	}
 	args := []string{"staging", "step1"}
-	if err := runSupfile(options, args, []byte(input)); err != nil {
+	if err := runSupfile(testErrStream, options, args, []byte(input)); err != nil {
 		t.Fatal(err)
 	}
 

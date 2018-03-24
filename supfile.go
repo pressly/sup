@@ -255,7 +255,7 @@ func (e ErrUnsupportedSupfileVersion) Error() string {
 }
 
 // NewSupfile parses configuration file and returns Supfile or error.
-func NewSupfile(data []byte) (*Supfile, error) {
+func NewSupfile(errStream io.Writer, data []byte) (*Supfile, error) {
 	var conf Supfile
 
 	if err := yaml.Unmarshal(data, &conf); err != nil {
@@ -305,7 +305,7 @@ func NewSupfile(data []byte) (*Supfile, error) {
 			}
 		}
 		if warning != "" {
-			fmt.Fprintf(os.Stderr, warning)
+			fmt.Fprintf(errStream, warning)
 		}
 
 		fallthrough
@@ -321,13 +321,13 @@ func NewSupfile(data []byte) (*Supfile, error) {
 
 // ParseInventory runs the inventory command, if provided, and appends
 // the command's output lines to the manually defined list of hosts.
-func (n Network) ParseInventory() ([]string, error) {
+func (n Network) ParseInventory(errStream io.Writer) ([]string, error) {
 	if n.Inventory == "" {
 		return nil, nil
 	}
 
 	cmd := exec.Command("/bin/sh", "-c", n.Inventory)
-	cmd.Stderr = os.Stderr
+	cmd.Stderr = errStream
 	output, err := cmd.Output()
 	if err != nil {
 		return nil, err

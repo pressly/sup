@@ -15,6 +15,7 @@ import (
 	"github.com/mikkeloscar/sshconfig"
 	"github.com/pkg/errors"
 	"github.com/pressly/sup"
+	"io"
 )
 
 var (
@@ -99,7 +100,7 @@ func main() {
 		}
 	}
 
-	if err := runSupfile(flags, flag.Args(), data); err != nil {
+	if err := runSupfile(os.Stderr, flags, flag.Args(), data); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
@@ -115,13 +116,13 @@ func resolvePath(path string) string {
 	return path
 }
 
-func runSupfile(options options, args []string, data []byte) error {
-	conf, err := sup.NewSupfile(data)
+func runSupfile(errStream io.Writer, options options, args []string, data []byte) error {
+	conf, err := sup.NewSupfile(errStream, data)
 	if err != nil {
 		return err
 	}
 	// Parse network and commands to be run from flags.
-	network, commands, err := parseArgs(args, conf)
+	network, commands, err := parseArgs(errStream, args, conf)
 	if err != nil {
 		return err
 	}
@@ -232,22 +233,22 @@ func runSupfile(options options, args []string, data []byte) error {
 
 // parseArgs parses args and returns network and commands to be run.
 // On error, it prints usage and exits.
-func parseArgs(args []string, conf *sup.Supfile) (*sup.Network, []*sup.Command, error) {
+func parseArgs(errStream io.Writer, args []string, conf *sup.Supfile) (*sup.Network, []*sup.Command, error) {
 	var commands []*sup.Command
 
 	if len(args) < 1 {
-		networkUsage(conf)
+		networkUsage(errStream, conf)
 		return nil, nil, ErrUsage
 	}
 
 	// Does the <network> exist?
 	network, ok := conf.Networks.Get(args[0])
 	if !ok {
-		networkUsage(conf)
+		networkUsage(errStream, conf)
 		return nil, nil, ErrUnknownNetwork
 	}
 
-	hosts, err := network.ParseInventory()
+	hosts, err := network.ParseInventory(errStream)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -255,13 +256,13 @@ func parseArgs(args []string, conf *sup.Supfile) (*sup.Network, []*sup.Command, 
 
 	// Does the <network> have at least one host?
 	if len(network.Hosts) == 0 {
-		networkUsage(conf)
+		networkUsage(errStream, conf)
 		return nil, nil, ErrNetworkNoHosts
 	}
 
 	// Check for the second argument
 	if len(args) < 2 {
-		cmdUsage(conf)
+		cmdUsage(errStream, conf)
 		return nil, nil, ErrUsage
 	}
 
@@ -294,7 +295,7 @@ func parseArgs(args []string, conf *sup.Supfile) (*sup.Network, []*sup.Command, 
 			for _, cmd := range target {
 				command, isCommand := conf.Commands.Get(cmd)
 				if !isCommand {
-					cmdUsage(conf)
+					cmdUsage(errStream, conf)
 					return nil, nil, fmt.Errorf("%v: %v", ErrCmd, cmd)
 				}
 				command.Name = cmd
@@ -310,7 +311,7 @@ func parseArgs(args []string, conf *sup.Supfile) (*sup.Network, []*sup.Command, 
 		}
 
 		if !isTarget && !isCommand {
-			cmdUsage(conf)
+			cmdUsage(errStream, conf)
 			return nil, nil, fmt.Errorf("%v: %v", ErrCmd, cmd)
 		}
 	}
@@ -318,9 +319,9 @@ func parseArgs(args []string, conf *sup.Supfile) (*sup.Network, []*sup.Command, 
 	return &network, commands, nil
 }
 
-func networkUsage(conf *sup.Supfile) {
+func networkUsage(errStream io.Writer, conf *sup.Supfile) {
 	w := &tabwriter.Writer{}
-	w.Init(os.Stderr, 4, 4, 2, ' ', 0)
+	w.Init(errStream, 4, 4, 2, ' ', 0)
 	defer w.Flush()
 
 	// Print available networks/hosts.
@@ -335,9 +336,9 @@ func networkUsage(conf *sup.Supfile) {
 	fmt.Fprintln(w)
 }
 
-func cmdUsage(conf *sup.Supfile) {
+func cmdUsage(errStream io.Writer, conf *sup.Supfile) {
 	w := &tabwriter.Writer{}
-	w.Init(os.Stderr, 4, 4, 2, ' ', 0)
+	w.Init(errStream, 4, 4, 2, ' ', 0)
 	defer w.Flush()
 
 	// Print available targets/commands.
