@@ -125,7 +125,7 @@ func runSupfile(options options, args []string, data []byte) error {
 	if err != nil {
 		return err
 	}
-	fmt.Println(network.Hosts)
+
 	// --only flag filters hosts
 	if options.onlyHosts != "" {
 		expr, err := regexp.CompilePOSIX(options.onlyHosts)
@@ -153,7 +153,6 @@ func runSupfile(options options, args []string, data []byte) error {
 
 		var hosts []string
 		for _, host := range network.Hosts {
-			fmt.Println(host)
 			if !expr.MatchString(host) {
 				hosts = append(hosts, host)
 			}

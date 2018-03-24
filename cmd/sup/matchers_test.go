@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"regexp"
 	"strings"
 	"testing"
 )
@@ -46,6 +47,25 @@ func (m matcher) expectExportOnActiveServers(export string) {
 	m.onEachActiveServer(func(server int, output string) {
 		for i, executed := range strings.Split(output, "\n") {
 			if !strings.Contains(executed, fmt.Sprintf("export %s;", export)) {
+				m.t.Errorf(
+					"command #%d on server #%d does not export `%s`:\n%s",
+					i,
+					server,
+					export,
+					executed,
+				)
+			}
+		}
+	})
+}
+func (m matcher) expectExportRegexpOnActiveServers(export string) {
+	m.onEachActiveServer(func(server int, output string) {
+		for i, executed := range strings.Split(output, "\n") {
+			re, err := regexp.Compile(fmt.Sprintf("export %s;", export))
+			if err != nil {
+				m.t.Fatal(err)
+			}
+			if !re.MatchString(executed) {
 				m.t.Errorf(
 					"command #%d on server #%d does not export `%s`:\n%s",
 					i,
