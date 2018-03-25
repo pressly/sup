@@ -19,8 +19,7 @@ import (
 )
 
 var (
-	supfile string
-	flags   options
+	flags options
 
 	showVersion bool
 	showHelp    bool
@@ -45,6 +44,8 @@ func (f *flagStringSlice) Set(value string) error {
 }
 
 type options struct {
+	dirname       string
+	supfile       string
 	envVars       flagStringSlice
 	sshConfig     string
 	onlyHosts     string
@@ -54,13 +55,12 @@ type options struct {
 }
 
 func init() {
-	flag.StringVar(&supfile, "f", "", "Custom path to ./Supfile[.yml]")
-
 	flag.BoolVar(&showVersion, "v", false, "Print version")
 	flag.BoolVar(&showVersion, "version", false, "Print version")
 	flag.BoolVar(&showHelp, "h", false, "Show help")
 	flag.BoolVar(&showHelp, "help", false, "Show help")
 
+	flag.StringVar(&flags.supfile, "f", "", "Custom path to ./Supfile[.yml]")
 	flag.Var(&flags.envVars, "e", "Set environment variables")
 	flag.Var(&flags.envVars, "env", "Set environment variables")
 	flag.StringVar(&flags.sshConfig, "sshconfig", "", "Read SSH Config file, ie. ~/.ssh/config file")
@@ -69,7 +69,6 @@ func init() {
 	flag.BoolVar(&flags.debug, "D", false, "Enable debug mode")
 	flag.BoolVar(&flags.debug, "debug", false, "Enable debug mode")
 	flag.BoolVar(&flags.disablePrefix, "disable-prefix", false, "Disable hostname prefix")
-
 }
 
 func main() {
@@ -86,37 +85,15 @@ func main() {
 		return
 	}
 
-	if supfile == "" {
-		supfile = "./Supfile"
-	}
-	data, err := ioutil.ReadFile(resolvePath(supfile))
-	if err != nil {
-		firstErr := err
-		data, err = ioutil.ReadFile("./Supfile.yml") // Alternative to ./Supfile.
-		if err != nil {
-			fmt.Fprintln(os.Stderr, firstErr)
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(1)
-		}
-	}
-
-	if err := runSupfile(os.Stderr, flags, flag.Args(), data); err != nil {
+	if err := runSupfile(os.Stderr, flags, flag.Args()); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
 }
 
-func resolvePath(path string) string {
-	if path[:2] == "~/" {
-		usr, err := user.Current()
-		if err == nil {
-			path = filepath.Join(usr.HomeDir, path[2:])
-		}
-	}
-	return path
-}
+func runSupfile(errStream io.Writer, options options, args []string) error {
+	data, err := readSupfile(options)
 
-func runSupfile(errStream io.Writer, options options, args []string, data []byte) error {
 	conf, err := sup.NewSupfile(errStream, data)
 	if err != nil {
 		return err
@@ -229,6 +206,43 @@ func runSupfile(errStream io.Writer, options options, args []string, data []byte
 
 	// Run all the commands in the given network.
 	return app.Run(network, vars, commands...)
+}
+
+func readSupfile(options options) ([]byte, error) {
+	filename := options.supfile
+	if filename == "" {
+		filename = "Supfile"
+	}
+
+	data, err := ioutil.ReadFile(defaultPath(options.dirname, filename))
+	if err != nil {
+		firstErr := err
+		// Alternative to ./Supfile.
+		data, err = ioutil.ReadFile(defaultPath(options.dirname, "Supfile.yml"))
+		if err != nil {
+			return []byte{}, fmt.Errorf("%v\n%v", firstErr, err)
+		}
+	}
+
+	return data, nil
+}
+
+func defaultPath(dir, path string) string {
+	if dir == "" {
+		return resolvePath(path)
+	}
+	return filepath.Join(dir, path)
+
+}
+
+func resolvePath(path string) string {
+	if path[:2] == "~/" {
+		usr, err := user.Current()
+		if err == nil {
+			path = filepath.Join(usr.HomeDir, path[2:])
+		}
+	}
+	return path
 }
 
 // parseArgs parses args and returns network and commands to be run.

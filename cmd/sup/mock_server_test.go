@@ -29,18 +29,14 @@ import (
 // - spins up mock SSH servers with the same authorized key
 // - writes an SSH config file with entries for all servers, naming them
 //   server0, server1 etc.
-func setupMockEnv(sshConfigFilename string, count int) ([]bytes.Buffer, string, func(), error) {
-	dir, err := ioutil.TempDir("", "suptest")
-	if err != nil {
-		return nil, "", nil, err
-	}
+func setupMockEnv(dirname string, count int) ([]bytes.Buffer, options, error) {
 
-	privateKeyPath := path.Join(dir, "gotest_private_key")
-	authorizedKeysPath := path.Join(dir, "authorized_keys")
-	sshConfigPath := path.Join(dir, sshConfigFilename)
+	privateKeyPath := path.Join(dirname, "gotest_private_key")
+	authorizedKeysPath := path.Join(dirname, "authorized_keys")
+	sshConfigPath := path.Join(dirname, "ssh_config")
 
 	if err := generateKeyPair(privateKeyPath, authorizedKeysPath); err != nil {
-		return nil, "", nil, err
+		return nil, options{}, err
 	}
 
 	outputs := make([]bytes.Buffer, count)
@@ -49,12 +45,16 @@ func setupMockEnv(sshConfigFilename string, count int) ([]bytes.Buffer, string, 
 		runTestServer(authorizedKeysPath, &addresses[i], &outputs[i])
 	}
 
-	err = writeSSHConfigFile(privateKeyPath, sshConfigPath, addresses)
+	err := writeSSHConfigFile(privateKeyPath, sshConfigPath, addresses)
 	if err != nil {
-		return nil, "", nil, err
+		return nil, options{}, err
 	}
 
-	return outputs, sshConfigPath, func() { os.RemoveAll(dir) }, nil
+	options := options{
+		sshConfig: sshConfigPath,
+		dirname:   dirname,
+	}
+	return outputs, options, nil
 }
 
 // generateKeyPair generates a pair of keys, the private key is written into
