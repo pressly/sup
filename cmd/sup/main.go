@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"os/user"
@@ -12,10 +13,10 @@ import (
 	"text/tabwriter"
 	"time"
 
+	"github.com/adammck/venv"
 	"github.com/mikkeloscar/sshconfig"
 	"github.com/pkg/errors"
 	"github.com/pressly/sup"
-	"io"
 )
 
 var (
@@ -52,6 +53,7 @@ type options struct {
 	exceptHosts   string
 	debug         bool
 	disablePrefix bool
+	env           venv.Env
 }
 
 func init() {
@@ -85,6 +87,7 @@ func main() {
 		return
 	}
 
+	flags.env = venv.OS()
 	if err := runSupfile(os.Stderr, flags, flag.Args()); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
@@ -99,7 +102,7 @@ func runSupfile(errStream io.Writer, options options, args []string) error {
 		return err
 	}
 	// Parse network and commands to be run from flags.
-	network, commands, err := parseArgs(errStream, args, conf)
+	network, commands, err := parseArgs(errStream, options, args, conf)
 	if err != nil {
 		return err
 	}
@@ -247,7 +250,7 @@ func resolvePath(path string) string {
 
 // parseArgs parses args and returns network and commands to be run.
 // On error, it prints usage and exits.
-func parseArgs(errStream io.Writer, args []string, conf *sup.Supfile) (*sup.Network, []*sup.Command, error) {
+func parseArgs(errStream io.Writer, options options, args []string, conf *sup.Supfile) (*sup.Network, []*sup.Command, error) {
 	var commands []*sup.Command
 
 	if len(args) < 1 {
@@ -290,15 +293,15 @@ func parseArgs(errStream io.Writer, args []string, conf *sup.Supfile) (*sup.Netw
 
 	// Add default nonce
 	network.Env.Set("SUP_TIME", time.Now().UTC().Format(time.RFC3339))
-	if os.Getenv("SUP_TIME") != "" {
-		network.Env.Set("SUP_TIME", os.Getenv("SUP_TIME"))
+	if options.env.Getenv("SUP_TIME") != "" {
+		network.Env.Set("SUP_TIME", options.env.Getenv("SUP_TIME"))
 	}
 
 	// Add user
-	if os.Getenv("SUP_USER") != "" {
-		network.Env.Set("SUP_USER", os.Getenv("SUP_USER"))
+	if options.env.Getenv("SUP_USER") != "" {
+		network.Env.Set("SUP_USER", options.env.Getenv("SUP_USER"))
 	} else {
-		network.Env.Set("SUP_USER", os.Getenv("USER"))
+		network.Env.Set("SUP_USER", options.env.Getenv("USER"))
 	}
 
 	for _, cmd := range args[1:] {

@@ -3,6 +3,24 @@
 	"ignore": "test appengine",
 	"package": [
 		{
+			"checksumSHA1": "JpbTntZjOHcUo5P9VrdcTFEGZ9Y=",
+			"path": "github.com/adammck/venv",
+			"revision": "8a9c907a37d36a8f34fa1c5b81aaf80c2554a306",
+			"revisionTime": "2016-08-19T02:56:05Z"
+		},
+		{
+			"checksumSHA1": "5yJLvX3vSDfIqaCqSEaIwM0B3co=",
+			"path": "github.com/adammck/venv/mock",
+			"revision": "8a9c907a37d36a8f34fa1c5b81aaf80c2554a306",
+			"revisionTime": "2016-08-19T02:56:05Z"
+		},
+		{
+			"checksumSHA1": "FIK6KYgGeXhdfcNHH80Ub1fBvwM=",
+			"path": "github.com/adammck/venv/os",
+			"revision": "8a9c907a37d36a8f34fa1c5b81aaf80c2554a306",
+			"revisionTime": "2016-08-19T02:56:05Z"
+		},
+		{
 			"path": "github.com/goware/prefixer",
 			"revision": "395022866408d928fc2439f7eac73dd8d370ec1d",
 			"revisionTime": "2016-01-18T12:23:47-05:00"

@@ -53,6 +53,7 @@ func setupMockEnv(dirname string, count int) ([]bytes.Buffer, options, error) {
 	options := options{
 		sshConfig: sshConfigPath,
 		dirname:   dirname,
+		env:       testEnv(),
 	}
 	return outputs, options, nil
 }

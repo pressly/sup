@@ -4,11 +4,16 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"os/user"
 	"path/filepath"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/adammck/venv"
+)
+
+const (
+	envTestUser = "sup_test_user"
 )
 
 var (
@@ -28,6 +33,7 @@ we	kp	re
 	withTmpDir(t, input, func(dirname string) {
 		options := options{
 			dirname: dirname,
+			env:     testEnv(),
 		}
 		if err := runSupfile(testErrStream, options, []string{}); err == nil {
 			t.Fatal("Expected an error")
@@ -55,6 +61,7 @@ commands:
 	withTmpDir(t, input, func(dirname string) {
 		options := options{
 			dirname: dirname,
+			env:     testEnv(),
 		}
 		if err := runSupfile(testErrStream, options, []string{}); err != ErrUsage {
 			t.Fatal(err)
@@ -107,6 +114,7 @@ commands:
 	withTmpDir(t, input, func(dirname string) {
 		options := options{
 			dirname: dirname,
+			env:     testEnv(),
 		}
 		if err := runSupfile(testErrStream, options, []string{"staging"}); err != ErrNetworkNoHosts {
 			t.Fatal(err)
@@ -134,6 +142,7 @@ commands:
 	withTmpDir(t, input, func(dirname string) {
 		options := options{
 			dirname: dirname,
+			env:     testEnv(),
 		}
 		if err := runSupfile(testErrStream, options, []string{"staging"}); err != ErrUsage {
 			t.Fatal(err)
@@ -168,6 +177,7 @@ targets:
 	withTmpDir(t, input, func(dirname string) {
 		options := options{
 			dirname: dirname,
+			env:     testEnv(),
 		}
 		if err := runSupfile(testErrStream, options, []string{"staging", "step5"}); err == nil {
 			t.Fatal("Expected an error")
@@ -205,6 +215,7 @@ targets:
 	withTmpDir(t, input, func(dirname string) {
 		options := options{
 			dirname: dirname,
+			env:     testEnv(),
 		}
 		if err := runSupfile(testErrStream, options, []string{"staging", "walk"}); err == nil {
 			t.Fatal("Expected an error")
@@ -389,6 +400,7 @@ commands:
 		options := options{
 			dirname:   dirname,
 			onlyHosts: "server42",
+			env:       venv.Mock(),
 		}
 		if err := runSupfile(testErrStream, options, []string{"staging", "step1"}); err == nil {
 			t.Fatal("Expected an error")
@@ -420,6 +432,7 @@ commands:
 		options := options{
 			dirname:   dirname,
 			onlyHosts: "server(",
+			env:       venv.Mock(),
 		}
 		if err := runSupfile(testErrStream, options, []string{"staging", "step1"}); err == nil {
 			t.Fatal("Expected an error")
@@ -487,6 +500,7 @@ commands:
 		options := options{
 			dirname:     dirname,
 			exceptHosts: "server",
+			env:         venv.Mock(),
 		}
 		if err := runSupfile(testErrStream, options, []string{"staging", "step1"}); err == nil {
 			t.Fatal("Expected an error")
@@ -518,6 +532,7 @@ commands:
 		options := options{
 			dirname:     dirname,
 			exceptHosts: "server(",
+			env:         venv.Mock(),
 		}
 		if err := runSupfile(testErrStream, options, []string{"staging", "step1"}); err == nil {
 			t.Fatal("Expected an error")
@@ -578,6 +593,7 @@ commands:
 	withTmpDir(t, input, func(dirname string) {
 		options := options{
 			dirname: dirname,
+			env:     testEnv(),
 		}
 		args := []string{"staging", "step1"}
 		if err := runSupfile(testErrStream, options, args); err == nil {
@@ -618,15 +634,11 @@ commands:
 			if err := runSupfile(testErrStream, options, []string{"staging", "step1"}); err != nil {
 				t.Fatal(err)
 			}
-			currentUser, err := user.Current()
-			if err != nil {
-				t.Fatal(err)
-			}
 			m := newMatcher(outputs, t)
 			m.expectActivityOnServers(0, 1)
 			m.expectExportOnActiveServers(`SUP_NETWORK="staging"`)
 			m.expectExportOnActiveServers(`SUP_ENV=""`)
-			m.expectExportOnActiveServers(fmt.Sprintf(`SUP_USER="%s"`, currentUser.Name))
+			m.expectExportOnActiveServers(fmt.Sprintf(`SUP_USER="%s"`, envTestUser))
 			m.expectExportRegexpOnActiveServers(`SUP_HOST="localhost:\d+"`)
 		})
 	})
@@ -694,7 +706,7 @@ commands:
 			if err != nil {
 				t.Fatal(err)
 			}
-			os.Setenv("SUP_TIME", "now")
+			options.env.Setenv("SUP_TIME", "now")
 
 			if err := runSupfile(testErrStream, options, []string{"staging", "step1"}); err != nil {
 				t.Fatal(err)
@@ -726,7 +738,7 @@ commands:
 			if err != nil {
 				t.Fatal(err)
 			}
-			os.Setenv("SUP_USER", "sup_rules")
+			options.env.Setenv("SUP_USER", "sup_rules")
 
 			if err := runSupfile(testErrStream, options, []string{"staging", "step1"}); err != nil {
 				t.Fatal(err)
@@ -1108,4 +1120,10 @@ func writeSupfileAs(dirname, filename, input string) error {
 		[]byte(input),
 		0666,
 	)
+}
+
+func testEnv() venv.Env {
+	env := venv.Mock()
+	env.Setenv("USER", envTestUser)
+	return env
 }
