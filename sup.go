@@ -70,9 +70,10 @@ func (sup *Stackup) Run(network *Network, envVars EnvList, commands ...*Command)
 
 			// SSH client.
 			remote := &SSHClient{
-				env:   env + `export SUP_HOST="` + host + `";`,
-				user:  network.User,
-				color: Colors[i%len(Colors)],
+				env:          env + `export SUP_HOST="` + host + `";`,
+				user:         network.User,
+				color:        Colors[i%len(Colors)],
+				identityFile: network.IdentityFile,
 			}
 
 			if bastion != nil {

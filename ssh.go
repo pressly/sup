@@ -9,7 +9,6 @@ import (
 	"os/user"
 	"path/filepath"
 	"strings"
-	"sync"
 
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/agent"
@@ -21,6 +20,7 @@ type SSHClient struct {
 	sess         *ssh.Session
 	user         string
 	host         string
+	identityFile string
 	remoteStdin  io.WriteCloser
 	remoteStdout io.Reader
 	remoteStderr io.Reader
@@ -29,6 +29,7 @@ type SSHClient struct {
 	running      bool
 	env          string //export FOO="bar"; export BAR="baz";
 	color        string
+	authMethod   ssh.AuthMethod
 }
 
 type ErrConnect struct {
@@ -76,11 +77,12 @@ func (c *SSHClient) parseHost(host string) error {
 	return nil
 }
 
-var initAuthMethodOnce sync.Once
-var authMethod ssh.AuthMethod
+// ensureAuthMethod initiates SSH authentication method.
+func (c *SSHClient) ensureAuthMethod() {
+	if c.authMethod != nil {
+		return
+	}
 
-// initAuthMethod initiates SSH authentication method.
-func initAuthMethod() {
 	var signers []ssh.Signer
 
 	// If there's a running SSH Agent, try to use its Private keys.
@@ -92,6 +94,10 @@ func initAuthMethod() {
 
 	// Try to read user's SSH private keys form the standard paths.
 	files, _ := filepath.Glob(os.Getenv("HOME") + "/.ssh/id_*")
+	// Add nonstandard path
+	if c.identityFile != "" {
+		files = append(files, c.identityFile)
+	}
 	for _, file := range files {
 		if strings.HasSuffix(file, ".pub") {
 			continue // Skip public keys.
@@ -107,7 +113,7 @@ func initAuthMethod() {
 		signers = append(signers, signer)
 
 	}
-	authMethod = ssh.PublicKeys(signers...)
+	c.authMethod = ssh.PublicKeys(signers...)
 }
 
 // SSHDialFunc can dial an ssh server and return a client
@@ -126,8 +132,7 @@ func (c *SSHClient) ConnectWith(host string, dialer SSHDialFunc) error {
 	if c.connOpened {
 		return fmt.Errorf("Already connected")
 	}
-
-	initAuthMethodOnce.Do(initAuthMethod)
+	c.ensureAuthMethod()
 
 	err := c.parseHost(host)
 	if err != nil {
@@ -137,7 +142,7 @@ func (c *SSHClient) ConnectWith(host string, dialer SSHDialFunc) error {
 	config := &ssh.ClientConfig{
 		User: c.user,
 		Auth: []ssh.AuthMethod{
-			authMethod,
+			c.authMethod,
 		},
 	}
 
