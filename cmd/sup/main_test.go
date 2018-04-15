@@ -551,7 +551,7 @@ version: 0.4
 
 networks:
   staging:
-    inventory: array=( 0 2 ); for i in "${array[@]}"; do printf "server$i\n\n# comment\n"; done
+    inventory: printf "server0\n# comment\n\nserver2\n"
 
 commands:
   step1:
