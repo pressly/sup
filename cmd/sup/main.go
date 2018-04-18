@@ -194,6 +194,9 @@ func parseArgs(conf *sup.Supfile) (*sup.Network, []*sup.Command, error) {
 }
 
 func resolvePath(path string) string {
+	if path == "" {
+		return ""
+	}
 	if path[:2] == "~/" {
 		usr, err := user.Current()
 		if err == nil {
