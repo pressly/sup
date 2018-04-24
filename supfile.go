@@ -170,6 +170,14 @@ func (e EnvVar) AsExport() string {
 // but maintains order, enabling late variables to reference early variables.
 type EnvList []*EnvVar
 
+func (e EnvList) Slice() []string {
+	envs := make([]string, len(e))
+	for i, env := range e {
+		envs[i] = env.String()
+	}
+	return envs
+}
+
 func (e *EnvList) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	items := []yaml.MapItem{}
 
@@ -327,6 +335,8 @@ func (n Network) ParseInventory() ([]string, error) {
 	}
 
 	cmd := exec.Command("/bin/sh", "-c", n.Inventory)
+	cmd.Env = os.Environ()
+	cmd.Env = append(cmd.Env, n.Env.Slice()...)
 	cmd.Stderr = os.Stderr
 	output, err := cmd.Output()
 	if err != nil {

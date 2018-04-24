@@ -122,6 +122,21 @@ func parseArgs(conf *sup.Supfile) (*sup.Network, []*sup.Command, error) {
 		return nil, nil, ErrUnknownNetwork
 	}
 
+	// Parse CLI --env flag env vars, override values defined in Network env.
+	for _, env := range envVars {
+		if len(env) == 0 {
+			continue
+		}
+		i := strings.Index(env, "=")
+		if i < 0 {
+			if len(env) > 0 {
+				network.Env.Set(env, "")
+			}
+			continue
+		}
+		network.Env.Set(env[:i], env[i+1:])
+	}
+
 	hosts, err := network.ParseInventory()
 	if err != nil {
 		return nil, nil, err
