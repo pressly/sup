@@ -122,7 +122,7 @@ func parseArgs(conf *sup.Supfile) (*sup.Network, []*sup.Command, error) {
 		return nil, nil, ErrUnknownNetwork
 	}
 
-	// Parse CLI --env flag env vars, define $SUP_ENV and override values defined in Network env.
+	// Parse CLI --env flag env vars, override values defined in Network env.
 	for _, env := range envVars {
 		if len(env) == 0 {
 			continue
