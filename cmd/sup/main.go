@@ -321,12 +321,12 @@ func main() {
 		}
 
 		// check network.Hosts for match
-		for _, host := range network.Hosts {
+		for k, host := range network.Hosts {
 			conf, found := confMap[host]
 			if found {
 				network.User = conf.User
 				network.IdentityFile = resolvePath(conf.IdentityFile)
-				network.Hosts = []string{fmt.Sprintf("%s:%d", conf.HostName, conf.Port)}
+				network.Hosts[k] = fmt.Sprintf("%s:%d", conf.HostName, conf.Port)
 			}
 		}
 	}
