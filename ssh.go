@@ -5,6 +5,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net"
+	"net/url"
 	"os"
 	"os/user"
 	"path/filepath"
@@ -43,16 +44,22 @@ func (e ErrConnect) Error() string {
 
 // parseHost parses and normalizes <user>@<host:port> from a given string.
 func (c *SSHClient) parseHost(host string) error {
-	c.host = host
-
-	// Remove extra "ssh://" schema
-	if len(c.host) > 6 && c.host[:6] == "ssh://" {
-		c.host = c.host[6:]
+	if !strings.Contains(host, "://") {
+		host = "ssh://" + host
 	}
 
-	if at := strings.Index(c.host, "@"); at != -1 {
-		c.user = c.host[:at]
-		c.host = c.host[at+1:]
+	info, err := url.Parse(host)
+	if err != nil {
+		return err
+	}
+
+	c.host = info.Host
+	c.user = info.User.Username()
+
+	// Add default port, if not set
+	_, p, _ := net.SplitHostPort(info.Host)
+	if p == "" {
+		c.host += ":22"
 	}
 
 	// Add default user, if not set
@@ -62,15 +69,6 @@ func (c *SSHClient) parseHost(host string) error {
 			return err
 		}
 		c.user = u.Username
-	}
-
-	if strings.Index(c.host, "/") != -1 {
-		return ErrConnect{c.user, c.host, "unexpected slash in the host URL"}
-	}
-
-	// Add default port, if not set
-	if strings.Index(c.host, ":") == -1 {
-		c.host += ":22"
 	}
 
 	return nil
