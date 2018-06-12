@@ -70,6 +70,22 @@ func (c *SSHClient) parseHost(host string) error {
 		c.user = u.Username
 	}
 
+	c.env = c.env + `export SUP_HOST="` + c.host + `";`
+	if m, _ := url.ParseQuery(info.RawQuery); len(m) > 0 {
+		for k, vs := range m {
+			if len(vs) == 0 || vs[len(vs)-1] == "" {
+				continue
+			}
+
+			v := vs[len(vs)-1]
+			if (v[0] == '\'' && v[len(v)-1] == '\'') || (v[0] == '"' && v[len(v)-1] == '"') {
+				c.env = c.env + fmt.Sprintf(`export %s=%s; `, k, vs[len(vs)-1])
+			} else {
+				c.env = c.env + fmt.Sprintf(`export %s="%s"; `, k, strings.Trim(vs[len(vs)-1], `'"`))
+			}
+		}
+	}
+
 	return nil
 }
 
