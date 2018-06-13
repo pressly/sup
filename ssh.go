@@ -48,18 +48,18 @@ func (c *SSHClient) parseHost(host string) error {
 		host = "ssh://" + host
 	}
 
-	info, err := url.Parse(host)
+	hostURL, err := url.Parse(host)
 	if err != nil {
 		return err
 	}
 
-	c.host = info.Host
-	if u := info.User.Username(); u != "" {
+	c.host = hostURL.Host
+	if u := hostURL.User.Username(); u != "" {
 		c.user = u
 	}
 
 	// Add default port, if not set
-	if _, p, err := net.SplitHostPort(info.Host); err == nil && p == "" {
+	if _, p, err := net.SplitHostPort(hostURL.Host); err == nil && p == "" {
 		c.host += ":22"
 	}
 
@@ -73,7 +73,7 @@ func (c *SSHClient) parseHost(host string) error {
 	}
 
 	c.env = c.env + `export SUP_HOST="` + c.host + `";`
-	if m, _ := url.ParseQuery(info.RawQuery); len(m) > 0 {
+	if m, _ := url.ParseQuery(hostURL.RawQuery); len(m) > 0 {
 		for k, vs := range m {
 			if len(vs) == 0 || vs[len(vs)-1] == "" {
 				continue
