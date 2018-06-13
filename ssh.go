@@ -59,7 +59,7 @@ func (c *SSHClient) parseHost(host string) error {
 	}
 
 	// Add default port, if not set
-	if _, p, err := net.SplitHostPort(info.Host); err != nil && p == "" {
+	if _, p, err := net.SplitHostPort(info.Host); err == nil && p == "" {
 		c.host += ":22"
 	}
 
