@@ -322,8 +322,11 @@ func main() {
 
 		// check network.Hosts for match
 		for _, host := range network.Hosts {
-			conf, found := confMap[host]
-			if found {
+			if conf, ok := confMap[host]; ok {
+				// attempt fallback on Host definition when HostName is omitted
+				if conf.HostName == "" {
+					conf.HostName = host
+				}
 				network.User = conf.User
 				network.IdentityFile = resolvePath(conf.IdentityFile)
 				network.Hosts = []string{fmt.Sprintf("%s:%d", conf.HostName, conf.Port)}
