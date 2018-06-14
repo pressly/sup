@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -10,8 +11,10 @@ import (
 	"regexp"
 	"strings"
 	"text/tabwriter"
+	"text/template"
 	"time"
 
+	"github.com/Masterminds/sprig"
 	"github.com/mikkeloscar/sshconfig"
 	"github.com/pkg/errors"
 	"github.com/pressly/sup"
@@ -26,6 +29,8 @@ var (
 
 	debug         bool
 	disablePrefix bool
+
+	enableTemplate bool
 
 	showVersion bool
 	showHelp    bool
@@ -60,6 +65,8 @@ func init() {
 	flag.BoolVar(&debug, "D", false, "Enable debug mode")
 	flag.BoolVar(&debug, "debug", false, "Enable debug mode")
 	flag.BoolVar(&disablePrefix, "disable-prefix", false, "Disable hostname prefix")
+
+	flag.BoolVar(&enableTemplate, "enable-template", false, "Parse Supfile as template")
 
 	flag.BoolVar(&showVersion, "v", false, "Print version")
 	flag.BoolVar(&showVersion, "version", false, "Print version")
@@ -248,6 +255,18 @@ func main() {
 			os.Exit(1)
 		}
 	}
+
+	// Parse Supfile as go text/template when --enable-template or supfile has suffix ".tpl|.tmpl|.template"
+	if enableTemplate || strings.HasSuffix(supfile, ".tpl") || strings.HasSuffix(supfile, ".tmpl") || strings.HasSuffix(supfile, ".template") {
+		var tpl bytes.Buffer
+		t := template.Must(template.New("Supfile").Funcs(sprig.TxtFuncMap()).Parse(string(data)))
+		if err := t.Execute(&tpl, data); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		data = tpl.Bytes()
+	}
+
 	conf, err := sup.NewSupfile(data)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
