@@ -19,16 +19,17 @@ Stack Up is a simple deployment tool that performs given set of commands on mult
 
 ### Options
 
-| Option            | Description                      |
-|-------------------|----------------------------------|
-| `-f Supfile`      | Custom path to Supfile           |
-| `-e`, `--env=[]`  | Set environment variables        |
-| `--only REGEXP`   | Filter hosts matching regexp     |
-| `--except REGEXP` | Filter out hosts matching regexp |
-| `--debug`, `-D`   | Enable debug/verbose mode        |
-| `--disable-prefix`| Disable hostname prefix          |
-| `--help`, `-h`    | Show help/usage                  |
-| `--version`, `-v` | Print version                    |
+| Option              | Description                      |
+|---------------------|----------------------------------|
+| `-f Supfile`        | Custom path to Supfile           |
+| `-e`, `--env=[]`    | Set environment variables        |
+| `--only REGEXP`     | Filter hosts matching regexp     |
+| `--except REGEXP`   | Filter out hosts matching regexp |
+| `--debug`, `-D`     | Enable debug/verbose mode        |
+| `--disable-prefix`  | Disable hostname prefix          |
+| `--enable-template` | Parse Supfile as template        |
+| `--help`, `-h`      | Show help/usage                  |
+| `--version`, `-v`   | Print version                    |
 
 ## Network
 
@@ -254,6 +255,11 @@ targets:
     - echo
     - date
 ```
+
+Tips:
+
+If set `--enable-template` flag, or the Supfile's suffix is one of `.tpl .tmpl .template`, it will be parsed as go text/template.
+Template Functions that can be used, see [Sprig function documentation](http://masterminds.github.io/sprig/)
 
 ### Default environment variables available in Supfile
 
