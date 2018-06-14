@@ -3,9 +3,45 @@
 	"ignore": "test appengine",
 	"package": [
 		{
+			"checksumSHA1": "qEZqLBpaJcVYYqKCa4qRjDqQ/fA=",
+			"path": "github.com/Masterminds/semver",
+			"revision": "3c560837130448941620d7694991d3ec440aefc0",
+			"revisionTime": "2018-04-10T20:51:47Z"
+		},
+		{
+			"checksumSHA1": "QC5GfBaOFJWLeR/GcVM2Hd6LX/E=",
+			"path": "github.com/Masterminds/sprig",
+			"revision": "6b2a58267f6a8b1dc8e2eb5519b984008fa85e8c",
+			"revisionTime": "2018-04-03T01:34:13Z"
+		},
+		{
+			"checksumSHA1": "X0xGt0e0IkZeviF+pFRlpHP+xkE=",
+			"path": "github.com/aokoli/goutils",
+			"revision": "3391d3790d23d03408670993e957e8f408993c34",
+			"revisionTime": "2017-05-31T11:00:25Z"
+		},
+		{
+			"checksumSHA1": "uFNLkTxk8BkHTk0Jcub2lj2BX4M=",
+			"path": "github.com/google/uuid",
+			"revision": "dec09d789f3dba190787f8b4454c7d3c936fed9e",
+			"revisionTime": "2017-11-29T19:10:14Z"
+		},
+		{
 			"path": "github.com/goware/prefixer",
 			"revision": "395022866408d928fc2439f7eac73dd8d370ec1d",
 			"revisionTime": "2016-01-18T12:23:47-05:00"
+		},
+		{
+			"checksumSHA1": "EZeV0QZvFvXk/Dnt9yFa9ob8l3k=",
+			"path": "github.com/huandu/xstrings",
+			"revision": "2bf18b218c51864a87384c06996e40ff9dcff8e1",
+			"revisionTime": "2018-02-14T04:29:31Z"
+		},
+		{
+			"checksumSHA1": "HMoZ70PrmL9dN5Kxs0dyZa/Z5k4=",
+			"path": "github.com/imdario/mergo",
+			"revision": "9316a62528ac99aaecb4e47eadd6dc8aa6533d58",
+			"revisionTime": "2018-06-08T14:01:56Z"
 		},
 		{
 			"checksumSHA1": "iS2fQC36iCVb42463vE/arPIcY4=",
@@ -42,6 +78,18 @@
 			"revisionTime": "2016-08-03T19:58:22Z",
 			"version": "master",
 			"versionExact": "master"
+		},
+		{
+			"checksumSHA1": "1MGpGDQqnUoRpv7VEcQrXOBydXE=",
+			"path": "golang.org/x/crypto/pbkdf2",
+			"revision": "37a17fe027db43f76fd88b056ddf588563fc8722",
+			"revisionTime": "2018-05-09T00:09:24Z"
+		},
+		{
+			"checksumSHA1": "sx1nQShs40UKtcJZNJuvYtGesaI=",
+			"path": "golang.org/x/crypto/scrypt",
+			"revision": "37a17fe027db43f76fd88b056ddf588563fc8722",
+			"revisionTime": "2018-05-09T00:09:24Z"
 		},
 		{
 			"checksumSHA1": "Lzk0xTzvdMm8Y4bErxJPSOj8iHk=",
