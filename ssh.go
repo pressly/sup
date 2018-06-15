@@ -44,7 +44,9 @@ func (e ErrConnect) Error() string {
 
 // parseHost parses and normalizes <user>@<host:port> from a given string.
 func (c *SSHClient) parseHost(host string) error {
-	if !strings.Contains(host, "://") {
+	// https://golang.org/pkg/net/url/#URL
+	// [scheme:][//[userinfo@]host][/]path[?query][#fragment]
+	if !strings.Contains(host, "://") && !strings.HasPrefix(host, "//") {
 		host = "ssh://" + host
 	}
 
@@ -53,14 +55,16 @@ func (c *SSHClient) parseHost(host string) error {
 		return err
 	}
 
-	c.host = hostURL.Host
+	// Add default port, if not set
+	hostname := hostURL.Hostname()
+	port := hostURL.Port()
+	if port == "" {
+		port = "22"
+	}
+	c.host = net.JoinHostPort(hostname, port)
+
 	if u := hostURL.User.Username(); u != "" {
 		c.user = u
-	}
-
-	// Add default port, if not set
-	if _, p, err := net.SplitHostPort(hostURL.Host); err == nil && p == "" {
-		c.host += ":22"
 	}
 
 	// Add default user, if not set
