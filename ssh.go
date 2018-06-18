@@ -63,8 +63,10 @@ func (c *SSHClient) parseHost(host string) error {
 	}
 	c.host = net.JoinHostPort(hostname, port)
 
-	if u := hostURL.User.Username(); u != "" {
-		c.user = u
+	if hostURL.User != nil {
+		if u := hostURL.User.Username(); u != "" {
+			c.user = u
+		}
 	}
 
 	// Add default user, if not set
