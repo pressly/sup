@@ -172,6 +172,8 @@ func parseArgs(conf *sup.Supfile) (*sup.Network, []*sup.Command, error) {
 	// Add user
 	if os.Getenv("SUP_USER") != "" {
 		network.Env.Set("SUP_USER", os.Getenv("SUP_USER"))
+	} else if os.Getenv("GO_TRIGGER_USER") != "" {
+		network.Env.Set("SUP_USER", os.Getenv("GO_TRIGGER_USER"))
 	} else {
 		network.Env.Set("SUP_USER", os.Getenv("USER"))
 	}
