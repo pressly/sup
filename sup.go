@@ -19,6 +19,7 @@ type Stackup struct {
 	conf   *Supfile
 	debug  bool
 	prefix bool
+	ignore bool
 }
 
 func New(conf *Supfile) (*Stackup, error) {
@@ -106,7 +107,11 @@ func (sup *Stackup) Run(network *Network, envVars EnvList, commands ...*Command)
 		clients = append(clients, client)
 	}
 	for err := range errCh {
-		return errors.Wrap(err, "connecting to clients failed")
+		if sup.ignore {
+			fmt.Fprintf(os.Stderr, "%v\n", errors.Wrap(err, "connecting to clients failed"))
+		} else {
+			return errors.Wrap(err, "connecting to clients failed")
+		}
 	}
 
 	// Run command or run multiple commands defined by target sequentially.
@@ -246,4 +251,8 @@ func (sup *Stackup) Debug(value bool) {
 
 func (sup *Stackup) Prefix(value bool) {
 	sup.prefix = value
+}
+
+func (sup *Stackup) Ignore(value bool) {
+	sup.ignore = value
 }
