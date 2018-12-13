@@ -30,6 +30,9 @@ networks:
 
   prod:
     inventory: for i in 1 2 3 4; do echo "ubuntu@prod$i.example.com"; done
+  
+  k8s:
+    inventory: for i in $(kubectl get nodes -o jsonpath={.items[*].status.addresses[?\(@.type==\"InternalIP\"\)].address}); do echo "ubuntu@$i"; done
 
 commands:
   # Named set of commands to be run remotely
