@@ -13,12 +13,14 @@ import (
 
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/agent"
+	"golang.org/x/crypto/ssh/terminal"
 )
 
 // Client is a wrapper over the SSH connection/sessions.
 type SSHClient struct {
 	conn         *ssh.Client
 	sess         *ssh.Session
+	ask          bool
 	user         string
 	host         string
 	remoteStdin  io.WriteCloser
@@ -52,6 +54,11 @@ func (c *SSHClient) parseHost(host string) error {
 
 	if at := strings.Index(c.host, "@"); at != -1 {
 		c.user = c.host[:at]
+		c.ask = false
+		if ask := strings.Index(c.user, "ask:"); ask == 0 {
+			c.user = c.user[4:]
+			c.ask = true
+		}
 		c.host = c.host[at+1:]
 	}
 
@@ -134,11 +141,24 @@ func (c *SSHClient) ConnectWith(host string, dialer SSHDialFunc) error {
 		return err
 	}
 
-	config := &ssh.ClientConfig{
-		User: c.user,
-		Auth: []ssh.AuthMethod{
-			authMethod,
-		},
+	var config *ssh.ClientConfig
+	if c.ask {
+		fmt.Print("Enter Password for " + c.user + "@" + c.host + ": ")
+		pass, _ := terminal.ReadPassword(0)
+		fmt.Println("")
+		config = &ssh.ClientConfig{
+			User: c.user,
+			Auth: []ssh.AuthMethod{
+				ssh.Password(string(pass)),
+			},
+		}
+	} else {
+		config = &ssh.ClientConfig{
+			User: c.user,
+			Auth: []ssh.AuthMethod{
+				authMethod,
+			},
+		}
 	}
 
 	c.conn, err = dialer("tcp", c.host, config)
