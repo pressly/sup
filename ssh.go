@@ -140,6 +140,7 @@ func (c *SSHClient) ConnectWith(host string, dialer SSHDialFunc) error {
 			authMethod,
 		},
 	}
+	config.HostKeyCallback = ssh.InsecureIgnoreHostKey()
 
 	c.conn, err = dialer("tcp", c.host, config)
 	if err != nil {
