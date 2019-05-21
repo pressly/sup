@@ -43,24 +43,7 @@ func (sup *Stackup) createTasks(cmd *Command, clients []Client, env string) ([]*
 			TTY:   false,
 		}
 
-		if cmd.Once {
-			task.Clients = []Client{clients[0]}
-			tasks = append(tasks, &task)
-		} else if cmd.Serial > 0 {
-			// Each "serial" task client group is executed sequentially.
-			for i := 0; i < len(clients); i += cmd.Serial {
-				j := i + cmd.Serial
-				if j > len(clients) {
-					j = len(clients)
-				}
-				copy := task
-				copy.Clients = clients[i:j]
-				tasks = append(tasks, &copy)
-			}
-		} else {
-			task.Clients = clients
-			tasks = append(tasks, &task)
-		}
+		addTask(task, cmd, clients, &tasks)
 	}
 
 	// todo: impl download support
@@ -81,24 +64,7 @@ func (sup *Stackup) createTasks(cmd *Command, clients []Client, env string) ([]*
 			TTY:    false,
 		}
 
-		if cmd.Once {
-			task.Clients = []Client{clients[0]}
-			tasks = append(tasks, &task)
-		} else if cmd.Serial > 0 {
-			// Each "serial" task client group is executed sequentially.
-			for i := 0; i < len(clients); i += cmd.Serial {
-				j := i + cmd.Serial
-				if j > len(clients) {
-					j = len(clients)
-				}
-				copy := task
-				copy.Clients = clients[i:j]
-				tasks = append(tasks, &copy)
-			}
-		} else {
-			task.Clients = clients
-			tasks = append(tasks, &task)
-		}
+		addTask(task, cmd, clients, &tasks)
 	}
 
 	// Script. Read the file as a multiline input command.
@@ -122,24 +88,8 @@ func (sup *Stackup) createTasks(cmd *Command, clients []Client, env string) ([]*
 		if cmd.Stdin {
 			task.Input = os.Stdin
 		}
-		if cmd.Once {
-			task.Clients = []Client{clients[0]}
-			tasks = append(tasks, &task)
-		} else if cmd.Serial > 0 {
-			// Each "serial" task client group is executed sequentially.
-			for i := 0; i < len(clients); i += cmd.Serial {
-				j := i + cmd.Serial
-				if j > len(clients) {
-					j = len(clients)
-				}
-				copy := task
-				copy.Clients = clients[i:j]
-				tasks = append(tasks, &copy)
-			}
-		} else {
-			task.Clients = clients
-			tasks = append(tasks, &task)
-		}
+
+		addTask(task, cmd, clients, &tasks)
 	}
 
 	// Local command.
@@ -174,27 +124,32 @@ func (sup *Stackup) createTasks(cmd *Command, clients []Client, env string) ([]*
 		if cmd.Stdin {
 			task.Input = os.Stdin
 		}
-		if cmd.Once {
-			task.Clients = []Client{clients[0]}
-			tasks = append(tasks, &task)
-		} else if cmd.Serial > 0 {
-			// Each "serial" task client group is executed sequentially.
-			for i := 0; i < len(clients); i += cmd.Serial {
-				j := i + cmd.Serial
-				if j > len(clients) {
-					j = len(clients)
-				}
-				copy := task
-				copy.Clients = clients[i:j]
-				tasks = append(tasks, &copy)
-			}
-		} else {
-			task.Clients = clients
-			tasks = append(tasks, &task)
-		}
+
+		addTask(task, cmd, clients, &tasks)
 	}
 
 	return tasks, nil
+}
+
+func addTask(task Task, cmd *Command, clients []Client, tasks *[]*Task) {
+	if cmd.Once {
+		task.Clients = []Client{clients[0]}
+		*tasks = append(*tasks, &task)
+	} else if cmd.Serial > 0 {
+		// Each "serial" task client group is executed sequentially.
+		for i := 0; i < len(clients); i += cmd.Serial {
+			j := i + cmd.Serial
+			if j > len(clients) {
+				j = len(clients)
+			}
+			copy := task
+			copy.Clients = clients[i:j]
+			*tasks = append(*tasks, &copy)
+		}
+	} else {
+		task.Clients = clients
+		*tasks = append(*tasks, &task)
+	}
 }
 
 type ErrTask struct {
