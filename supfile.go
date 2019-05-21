@@ -67,15 +67,16 @@ func (n *Networks) Get(name string) (Network, bool) {
 
 // Command represents command(s) to be run remotely.
 type Command struct {
-	Name   string   `yaml:"-"`      // Command name.
-	Desc   string   `yaml:"desc"`   // Command description.
-	Local  string   `yaml:"local"`  // Command(s) to be run locally.
-	Run    string   `yaml:"run"`    // Command(s) to be run remotelly.
-	Script string   `yaml:"script"` // Load command(s) from script and run it remotelly.
-	Upload []Upload `yaml:"upload"` // See Upload struct.
-	Stdin  bool     `yaml:"stdin"`  // Attach localhost STDOUT to remote commands' STDIN?
-	Once   bool     `yaml:"once"`   // The command should be run "once" (on one host only).
-	Serial int      `yaml:"serial"` // Max number of clients processing a task in parallel.
+	Name     string     `yaml:"-"`        // Command name.
+	Desc     string     `yaml:"desc"`     // Command description.
+	Local    string     `yaml:"local"`    // Command(s) to be run locally.
+	Run      string     `yaml:"run"`      // Command(s) to be run remotelly.
+	Script   string     `yaml:"script"`   // Load command(s) from script and run it remotelly.
+	Upload   []Upload   `yaml:"upload"`   // See Upload struct.
+	Download []Download `yaml:"download"` // See Download struct.
+	Stdin    bool       `yaml:"stdin"`    // Attach localhost STDOUT to remote commands' STDIN?
+	Once     bool       `yaml:"once"`     // The command should be run "once" (on one host only).
+	Serial   int        `yaml:"serial"`   // Max number of clients processing a task in parallel.
 
 	// API backward compatibility. Will be deprecated in v1.0.
 	RunOnce bool `yaml:"run_once"` // The command should be run once only.
@@ -149,6 +150,14 @@ type Upload struct {
 	Src string `yaml:"src"`
 	Dst string `yaml:"dst"`
 	Exc string `yaml:"exclude"`
+}
+
+// Download represents file copy operation from remote SrcFolder/Src to local Dst
+type Download struct {
+	SrcFolder string `yaml:"src_folder"`
+	Src       string `yaml:"src"`
+	Dst       string `yaml:"dst"`
+	Exc       string `yaml:"exclude"` // todo: to support Exclude setting
 }
 
 // EnvVar represents an environment variable

@@ -142,7 +142,13 @@ func (sup *Stackup) Run(network *Network, envVars EnvList, commands ...*Command)
 				wg.Add(1)
 				go func(c Client) {
 					defer wg.Done()
-					_, err := io.Copy(os.Stdout, prefixer.New(c.Stdout(), prefix))
+					var err error
+					if task.Output == nil {
+						_, err = io.Copy(os.Stdout, prefixer.New(c.Stdout(), prefix))
+					} else {
+						// for download task, remote task stdout piped into local stdin of tar process
+						_, err = io.Copy(task.Output, c.Stdout())
+					}
 					if err != nil && err != io.EOF {
 						// TODO: io.Copy() should not return io.EOF at all.
 						// Upstream bug? Or prefixer.WriteTo() bug?
