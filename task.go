@@ -13,6 +13,7 @@ import (
 type Task struct {
 	Run     string
 	Input   io.Reader
+	Output  io.Writer
 	Clients []Client
 	TTY     bool
 }
@@ -40,6 +41,44 @@ func (sup *Stackup) createTasks(cmd *Command, clients []Client, env string) ([]*
 			Run:   RemoteTarCommand(upload.Dst),
 			Input: uploadTarReader,
 			TTY:   false,
+		}
+
+		if cmd.Once {
+			task.Clients = []Client{clients[0]}
+			tasks = append(tasks, &task)
+		} else if cmd.Serial > 0 {
+			// Each "serial" task client group is executed sequentially.
+			for i := 0; i < len(clients); i += cmd.Serial {
+				j := i + cmd.Serial
+				if j > len(clients) {
+					j = len(clients)
+				}
+				copy := task
+				copy.Clients = clients[i:j]
+				tasks = append(tasks, &copy)
+			}
+		} else {
+			task.Clients = clients
+			tasks = append(tasks, &task)
+		}
+	}
+
+	// todo: impl download support
+	for _, download := range cmd.Download {
+		dst, err := ResolveLocalPath(cwd, download.Dst, env)
+		if err != nil {
+			return nil, errors.Wrap(err, "download: "+download.Dst)
+		}
+		tarWriter, err := NewTarStreamWriter(dst)
+		if err != nil {
+			return nil, errors.Wrap(err, "download: "+download.Dst)
+		}
+
+		// todo: support download.Exclude
+		task := Task{
+			Run:    RemoteTarCreateCommand(download.SrcFolder, download.Src),
+			Output: tarWriter,
+			TTY:    false,
 		}
 
 		if cmd.Once {
