@@ -20,6 +20,7 @@ type SSHClient struct {
 	conn         *ssh.Client
 	sess         *ssh.Session
 	user         string
+	identityFile string
 	host         string
 	remoteStdin  io.WriteCloser
 	remoteStdout io.Reader
@@ -80,7 +81,7 @@ var initAuthMethodOnce sync.Once
 var authMethod ssh.AuthMethod
 
 // initAuthMethod initiates SSH authentication method.
-func initAuthMethod() {
+func initAuthMethod(identityFile string) {
 	var signers []ssh.Signer
 
 	// If there's a running SSH Agent, try to use its Private keys.
@@ -92,7 +93,15 @@ func initAuthMethod() {
 
 	// Try to read user's SSH private keys form the standard paths.
 	files, _ := filepath.Glob(os.Getenv("HOME") + "/.ssh/id_*")
+
+	if identityFile != "" {
+		files = append(files, identityFile)
+	} else if os.Getenv("NETWORK_IDENTITY_FILE") != "" {
+		files = append(files, os.Getenv("NETWORK_IDENTITY_FILE"))
+	}
+
 	for _, file := range files {
+		fmt.Println(file)
 		if strings.HasSuffix(file, ".pub") {
 			continue // Skip public keys.
 		}
@@ -102,8 +111,11 @@ func initAuthMethod() {
 		}
 		signer, err := ssh.ParsePrivateKey(data)
 		if err != nil {
+			fmt.Println(file)
+			fmt.Println(err)
 			continue
 		}
+		fmt.Println(file)
 		signers = append(signers, signer)
 
 	}
@@ -127,7 +139,9 @@ func (c *SSHClient) ConnectWith(host string, dialer SSHDialFunc) error {
 		return fmt.Errorf("Already connected")
 	}
 
-	initAuthMethodOnce.Do(initAuthMethod)
+	initAuthMethodOnce.Do(func() {
+		initAuthMethod(c.identityFile)
+	})
 
 	err := c.parseHost(host)
 	if err != nil {

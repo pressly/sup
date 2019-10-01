@@ -261,6 +261,8 @@ func main() {
 		os.Exit(1)
 	}
 
+	network.IdentityFile = resolvePath(network.IdentityFile)
+
 	// --only flag filters hosts
 	if onlyHosts != "" {
 		expr, err := regexp.CompilePOSIX(onlyHosts)

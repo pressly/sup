@@ -72,6 +72,7 @@ func (sup *Stackup) Run(network *Network, envVars EnvList, commands ...*Command)
 			remote := &SSHClient{
 				env:   env + `export SUP_HOST="` + host + `";`,
 				user:  network.User,
+				identityFile: network.IdentityFile,
 				color: Colors[i%len(Colors)],
 			}
 
