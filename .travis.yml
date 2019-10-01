@@ -1,10 +1,11 @@
 sudo: false
 language: go
 go:
-  - 1.9
+  - 1.12
   - tip
 
 install:
+  - export GO111MODULE="on"
   - make build
 
 script:
