@@ -30,8 +30,8 @@ type Network struct {
 	Bastion   string   `yaml:"bastion"` // Jump host for the environment
 
 	// Should these live on Hosts too? We'd have to change []string to struct, even in Supfile.
-	User         string // `yaml:"user"`
-	IdentityFile string // `yaml:"identity_file"`
+	User         string `yaml:"user"`
+	IdentityFile string `yaml:"identity_file"`
 }
 
 // Networks is a list of user-defined networks
