@@ -322,9 +322,20 @@ func main() {
 
 		// check network.Hosts for match
 		for _, host := range network.Hosts {
+			// strip user prefix if present
+			var user string
+			if at := strings.Index(host, "@"); at != -1 && len(host) > at+1 {
+				user = host[:at]
+				host = host[at+1:]
+			}
+
 			conf, found := confMap[host]
 			if found {
-				network.User = conf.User
+				if len(user) == 0 {
+					network.User = conf.User
+				} else {
+					network.User = user
+				}
 				network.IdentityFile = resolvePath(conf.IdentityFile)
 				network.Hosts = []string{fmt.Sprintf("%s:%d", conf.HostName, conf.Port)}
 			}
