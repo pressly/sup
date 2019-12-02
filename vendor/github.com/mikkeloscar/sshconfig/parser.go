@@ -103,7 +103,7 @@ Loop:
 			}
 			sshHost.IdentityFile = next.val
 		case itemError:
-			return nil, fmt.Errorf(token.val)
+			return nil, fmt.Errorf("%s at pos %d", token.val, token.pos)
 		case itemEOF:
 			if sshHost != nil {
 				sshConfigs = append(sshConfigs, sshHost)
