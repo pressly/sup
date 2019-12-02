@@ -3,67 +3,69 @@
 	"ignore": "test appengine",
 	"package": [
 		{
+			"checksumSHA1": "5mkxnv32zZlZ1OQwXAIKy8+ZfOI=",
 			"path": "github.com/goware/prefixer",
 			"revision": "395022866408d928fc2439f7eac73dd8d370ec1d",
-			"revisionTime": "2016-01-18T12:23:47-05:00"
+			"revisionTime": "2016-01-18T17:23:47Z"
 		},
 		{
-			"checksumSHA1": "iS2fQC36iCVb42463vE/arPIcY4=",
+			"checksumSHA1": "Qu1JmKC6w5/Sy4PpRLbGkWfwFOM=",
 			"path": "github.com/mikkeloscar/sshconfig",
-			"revision": "fc5e37b16b6829536cf79b6fe356f14da1e77cd6",
-			"revisionTime": "2016-12-23T09:56:32Z"
+			"revision": "ec0822bcc4f4baae05da47b53dbea6cfd599150c",
+			"revisionTime": "2019-01-02T08:27:40Z"
 		},
 		{
-			"checksumSHA1": "GcaTbmmzSGqTb2X6qnNtmDyew1Q=",
+			"checksumSHA1": "SVinfxcBSupb3+HEKpSBYFZ4Bh4=",
 			"path": "github.com/pkg/errors",
-			"revision": "a2d6902c6d2a2f194eb3fb474981ab7867c81505",
-			"revisionTime": "2016-06-27T22:23:52Z"
+			"revision": "7f95ac13edff643b8ce5398b6ccab125f8a20c1a",
+			"revisionTime": "2019-11-09T10:23:16Z"
 		},
 		{
-			"checksumSHA1": "kALxprn17Sk/x2InsoTApX6bo50=",
+			"checksumSHA1": "fP1hCOmaJM9ZH0dZi6dw/+uAbR8=",
 			"path": "golang.org/x/crypto/curve25519",
-			"revision": "7a1054f3ac58191481dc500077c6b060f5d6c7e5",
-			"revisionTime": "2016-08-03T19:58:22Z",
+			"revision": "b544559bb6d1b5c62fba4af5e843ff542174f079",
+			"revisionTime": "2019-11-28T06:18:39Z",
 			"version": "master",
 			"versionExact": "master"
 		},
 		{
-			"checksumSHA1": "wGb//LjBPNxYHqk+dcLo7BjPXK8=",
+			"checksumSHA1": "LBGzsIWPQD6uFAeSYFg8Bd28Grw=",
 			"path": "golang.org/x/crypto/ed25519",
-			"revision": "7a1054f3ac58191481dc500077c6b060f5d6c7e5",
-			"revisionTime": "2016-08-03T19:58:22Z",
+			"revision": "b544559bb6d1b5c62fba4af5e843ff542174f079",
+			"revisionTime": "2019-11-28T06:18:39Z",
 			"version": "master",
 			"versionExact": "master"
 		},
 		{
-			"checksumSHA1": "LXFcVx8I587SnWmKycSDEq9yvK8=",
+			"checksumSHA1": "0JTAFXPkankmWcZGQJGScLDiaN8=",
 			"path": "golang.org/x/crypto/ed25519/internal/edwards25519",
-			"revision": "7a1054f3ac58191481dc500077c6b060f5d6c7e5",
-			"revisionTime": "2016-08-03T19:58:22Z",
+			"revision": "b544559bb6d1b5c62fba4af5e843ff542174f079",
+			"revisionTime": "2019-11-28T06:18:39Z",
 			"version": "master",
 			"versionExact": "master"
 		},
 		{
-			"checksumSHA1": "Lzk0xTzvdMm8Y4bErxJPSOj8iHk=",
+			"checksumSHA1": "d3ecWccpEaE7+6zr/yaGLli/HF0=",
 			"path": "golang.org/x/crypto/ssh",
-			"revision": "7a1054f3ac58191481dc500077c6b060f5d6c7e5",
-			"revisionTime": "2016-08-03T19:58:22Z",
+			"revision": "b544559bb6d1b5c62fba4af5e843ff542174f079",
+			"revisionTime": "2019-11-28T06:18:39Z",
 			"version": "master",
 			"versionExact": "master"
 		},
 		{
-			"checksumSHA1": "dA/dc+Var3VnLrksziLa0Zli+YI=",
+			"checksumSHA1": "MdhdulxEPaNO8KgIblIyilwB9YI=",
 			"path": "golang.org/x/crypto/ssh/agent",
-			"revision": "7a1054f3ac58191481dc500077c6b060f5d6c7e5",
-			"revisionTime": "2016-08-03T19:58:22Z",
+			"revision": "b544559bb6d1b5c62fba4af5e843ff542174f079",
+			"revisionTime": "2019-11-28T06:18:39Z",
 			"version": "master",
 			"versionExact": "master"
 		},
 		{
+			"checksumSHA1": "mspriBK28mrdRiQNHoThnYEFaeQ=",
 			"path": "gopkg.in/yaml.v2",
-			"revision": "a83829b6f1293c91addabc89d0571c246397bbf4",
-			"revisionTime": "2016-03-01T17:40:22-03:00"
+			"revision": "1f64d6156d11335c3f22d9330b0ad14fc1e789ce",
+			"revisionTime": "2019-11-19T21:27:36Z"
 		}
 	],
-	"rootPath": "github.com/pressly/sup"
+	"rootPath": "sup"
 }
