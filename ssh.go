@@ -84,24 +84,32 @@ func initAuthMethod() {
 	var signers []ssh.Signer
 
 	// If there's a running SSH Agent, try to use its Private keys.
-	sock, err := net.Dial("unix", os.Getenv("SSH_AUTH_SOCK"))
-	if err == nil {
-		agent := agent.NewClient(sock)
-		signers, _ = agent.Signers()
+	sockPath := os.Getenv("SSH_AUTH_SOCK")
+	if len(sockPath) > 0 {
+		sock, err := net.Dial("unix", sockPath)
+		if err == nil {
+			agent := agent.NewClient(sock)
+			signers, _ = agent.Signers()
+		} else {
+			fmt.Printf("warning: couldn't connect to SSH_AUTH_SOCK (%s)\n", err)
+		}
 	}
 
 	// Try to read user's SSH private keys form the standard paths.
 	files, _ := filepath.Glob(os.Getenv("HOME") + "/.ssh/id_*")
 	for _, file := range files {
+		fmt.Println("applepear1 keyfile candidate", file)
 		if strings.HasSuffix(file, ".pub") {
 			continue // Skip public keys.
 		}
 		data, err := ioutil.ReadFile(file)
 		if err != nil {
+			fmt.Printf("warning: not importing unreadable key %s (%s)\n", file, err)
 			continue
 		}
 		signer, err := ssh.ParsePrivateKey(data)
 		if err != nil {
+			fmt.Printf("warning: not importing misformatted key %s (%s)\n", file, err)
 			continue
 		}
 		signers = append(signers, signer)
