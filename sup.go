@@ -30,12 +30,18 @@ func New(conf *Supfile) (*Stackup, error) {
 // Run runs set of commands on multiple hosts defined by network sequentially.
 // TODO: This megamoth method needs a big refactor and should be split
 //       to multiple smaller methods.
-func (sup *Stackup) Run(network *Network, envVars EnvList, commands ...*Command) error {
+func (sup *Stackup) Run(network *Network, cliVars EnvList, commands ...*Command) error {
 	if len(commands) == 0 {
 		return errors.New("no commands to be run")
 	}
 
-	env := envVars.AsExport()
+	// Order is important here.
+	// Least specific (most general) env vars first,
+	// then the network specific ones and finally
+	// the command line vars.
+	// Semantics are last-write-wins.
+	env := append(sup.conf.Env, network.Env...)
+	env = append(env, cliVars...)
 
 	// Create clients for every host (either SSH or Localhost).
 	var bastion *SSHClient
@@ -58,7 +64,7 @@ func (sup *Stackup) Run(network *Network, envVars EnvList, commands ...*Command)
 			// Localhost client.
 			if host == "localhost" {
 				local := &LocalhostClient{
-					env: env + `export SUP_HOST="` + host + `";`,
+					env: env.AsExport() + `export SUP_HOST="` + host + `";`,
 				}
 				if err := local.Connect(host); err != nil {
 					errCh <- errors.Wrap(err, "connecting to localhost failed")
@@ -70,7 +76,7 @@ func (sup *Stackup) Run(network *Network, envVars EnvList, commands ...*Command)
 
 			// SSH client.
 			remote := &SSHClient{
-				env:   env + `export SUP_HOST="` + host + `";`,
+				env:   env.AsExport() + `export SUP_HOST="` + host + `";`,
 				user:  network.User,
 				color: Colors[i%len(Colors)],
 			}
@@ -112,7 +118,7 @@ func (sup *Stackup) Run(network *Network, envVars EnvList, commands ...*Command)
 	// Run command or run multiple commands defined by target sequentially.
 	for _, cmd := range commands {
 		// Translate command into task(s).
-		tasks, err := sup.createTasks(cmd, clients, env)
+		tasks, err := sup.createTasks(cmd, clients)
 		if err != nil {
 			return errors.Wrap(err, "creating task failed")
 		}

@@ -14,6 +14,8 @@ env:
 networks:
   # Groups of hosts
   local:
+    env:
+      SUP_LOCAL: yessir
     hosts:
       - localhost
 
@@ -53,7 +55,7 @@ commands:
     upload:
       - src: ./
         dst: /tmp/$IMAGE
-    script: ./scripts/docker-build.sh
+    script: $SUPFILE_DIR/scripts/docker-build.sh
     once: true
 
   pull:
@@ -125,6 +127,10 @@ commands:
     local: >
       curl -X POST --data-urlencode 'payload={"channel": "#_team_", "text": "['$SUP_NETWORK'] '$SUP_USER' deployed '$NAME'"}' \
         https://hooks.slack.com/services/X/Y/Z
+
+  env:
+    desc: Print environment
+    local: env
 
   bash:
     desc: Interactive shell on all hosts

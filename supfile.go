@@ -262,12 +262,45 @@ func (e ErrUnsupportedSupfileVersion) Error() string {
 	return fmt.Sprintf("%v\n\nCheck your Supfile version (available latest version: v0.5)", e.Msg)
 }
 
+// SupfileOption modifies a Supfile in some way and maybe returns an error.
+type SupfileOption func(*Supfile) error
+
+// WithInheritEnv exports the environment variable env as value, val, in the context of a supfile.
+// env will be read from the process runtime and the values here have precedence. This allows users
+// to chain Supfile invocation and only have the top-level value set the SUP_* env vars.
+func WithInheritEnv(env, val string) SupfileOption {
+	if envVal := os.Getenv(env); envVal != "" {
+		val = envVal
+	}
+	return WithEnv(env, val)
+}
+
+// WithEnv forces the environment variable env to val in the context of a Supfile.
+func WithEnv(env, val string) SupfileOption {
+	return func(s *Supfile) error {
+		for network := range s.Networks.nets {
+			n := s.Networks.nets[network]
+			n.Env.Set(env, val)
+			s.Networks.nets[network] = n
+		}
+		s.Env.Set(env, val)
+		return nil
+	}
+}
+
 // NewSupfile parses configuration file and returns Supfile or error.
-func NewSupfile(data []byte) (*Supfile, error) {
+func NewSupfile(data []byte, opts ...SupfileOption) (*Supfile, error) {
 	var conf Supfile
 
 	if err := yaml.Unmarshal(data, &conf); err != nil {
 		return nil, err
+	}
+
+	for _, opt := range opts {
+		err := opt(&conf)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// API backward compatibility. Will be deprecated in v1.0.
@@ -327,16 +360,28 @@ func NewSupfile(data []byte) (*Supfile, error) {
 	return &conf, nil
 }
 
+func (s *Supfile) ResolveLocalPath(cwd, path string) (string, error) {
+	// Check if file exists first. Use bash to resolve $ENV_VARs.
+	cmd := exec.Command("bash", "-c", s.Env.AsExport()+" echo -n "+path)
+	cmd.Dir = cwd
+	resolvedFilename, err := cmd.Output()
+	if err != nil {
+		return "", errors.Wrap(err, "resolving path failed")
+	}
+
+	return string(resolvedFilename), nil
+}
+
 // ParseInventory runs the inventory command, if provided, and appends
 // the command's output lines to the manually defined list of hosts.
-func (n Network) ParseInventory() ([]string, error) {
+func (n Network) ParseInventory(ctx EnvList) ([]string, error) {
 	if n.Inventory == "" {
 		return nil, nil
 	}
 
 	cmd := exec.Command("/bin/sh", "-c", n.Inventory)
 	cmd.Env = os.Environ()
-	cmd.Env = append(cmd.Env, n.Env.Slice()...)
+	cmd.Env = append(cmd.Env, append(ctx.Slice(), n.Env.Slice()...)...)
 	cmd.Stderr = os.Stderr
 	output, err := cmd.Output()
 	if err != nil {
