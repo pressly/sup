@@ -192,7 +192,7 @@ func (e *EnvList) UnmarshalYAML(unmarshal func(interface{}) error) error {
 		e.Set(fmt.Sprintf("%v", v.Key), fmt.Sprintf("%v", v.Value))
 	}
 
-	return nil
+	return e.ResolveValues()
 }
 
 // Set key to be equal value in this list.
