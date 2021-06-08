@@ -97,6 +97,7 @@ func (sup *Stackup) Run(network *Network, envVars EnvList, commands ...*Command)
 	var clients []Client
 	for client := range clientCh {
 		if remote, ok := client.(*SSHClient); ok {
+			fmt.Println("Connected", remote.host)
 			defer remote.Close()
 		}
 		_, prefixLen := client.Prefix()
