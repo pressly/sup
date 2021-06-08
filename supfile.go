@@ -364,3 +364,37 @@ func (n Network) ParseInventory() ([]string, error) {
 	}
 	return hosts, nil
 }
+
+// ParseBastion returns the bastion if it is a valid connection string
+// or runs the bastion command, if provided, and returns the first
+// line of the command's output.
+func (n Network) ParseBastion() (string, error) {
+	if n.Bastion == "" {
+		return "", nil
+	}
+
+	// check if its a connection string
+	testConn := &SSHClient{}
+	if err := testConn.Connect(n.Bastion); err == nil {
+		return n.Bastion, nil
+	}
+
+	cmd := exec.Command("/bin/sh", "-c", n.Bastion)
+	cmd.Env = os.Environ()
+	cmd.Env = append(cmd.Env, n.Env.Slice()...)
+	cmd.Stderr = os.Stderr
+	output, err := cmd.Output()
+	if err != nil {
+		return "", err
+	}
+
+	buf := bytes.NewBuffer(output)
+
+	bastion, err := buf.ReadString('\n')
+	if err != nil {
+		return "", err
+	}
+
+	bastion = strings.TrimSpace(bastion)
+	return bastion, nil
+}
