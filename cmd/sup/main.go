@@ -26,6 +26,7 @@ var (
 
 	debug         bool
 	disablePrefix bool
+	ignoreError   bool
 
 	showVersion bool
 	showHelp    bool
@@ -60,6 +61,7 @@ func init() {
 	flag.BoolVar(&debug, "D", false, "Enable debug mode")
 	flag.BoolVar(&debug, "debug", false, "Enable debug mode")
 	flag.BoolVar(&disablePrefix, "disable-prefix", false, "Disable hostname prefix")
+	flag.BoolVar(&ignoreError, "ignore-error", false, "Ignore unreachable client error")
 
 	flag.BoolVar(&showVersion, "v", false, "Print version")
 	flag.BoolVar(&showVersion, "version", false, "Print version")
@@ -373,6 +375,7 @@ func main() {
 	}
 	app.Debug(debug)
 	app.Prefix(!disablePrefix)
+	app.Ignore(ignoreError)
 
 	// Run all the commands in the given network.
 	err = app.Run(network, vars, commands...)
