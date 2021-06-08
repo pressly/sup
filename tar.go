@@ -10,7 +10,10 @@ import (
 )
 
 // Copying dirs/files over SSH using TAR.
+// upload:
 // tar -C . -cvzf - $SRC | ssh $HOST "tar -C $DST -xvzf -"
+// download:
+// ssh $HOST "tar -C $SRC_DIR -czvf - $SRC_FILE" | tar -C $DST -xzvf -
 
 // RemoteTarCommand returns command to be run on remote SSH host
 // to properly receive the created TAR stream.
@@ -50,4 +53,27 @@ func NewTarStreamReader(cwd, path, exclude string) (io.Reader, error) {
 	}
 
 	return stdout, nil
+}
+
+// RemoteTarCreateCommand forms "tar -C $SRC_DIR -czvf - $SRC_FILE"
+// which is the remote part of download task
+func RemoteTarCreateCommand(dir, src string) string {
+	return fmt.Sprintf("tar -C \"%s\" -czvf - \"%s\"", dir, src)
+}
+
+// NewTarStreamWriter creates a tar stream writer to local path
+// by calling tar -C $DST -xzvf -
+// which is the local part of download task
+func NewTarStreamWriter(dst string) (io.Writer, error) {
+	cmd := exec.Command("tar", "-C", dst, "-xzvf", "-")
+	stdin, err := cmd.StdinPipe()
+	if err != nil {
+		return nil, errors.Wrap(err, "tar: stdin pipe failed")
+	}
+
+	if err := cmd.Start(); err != nil {
+		return nil, errors.Wrap(err, "tar: starting cmd failed")
+	}
+
+	return stdin, nil
 }
