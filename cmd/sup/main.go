@@ -109,6 +109,11 @@ func cmdUsage(conf *sup.Supfile) {
 func parseArgs(conf *sup.Supfile) (*sup.Network, []*sup.Command, error) {
 	var commands []*sup.Command
 
+	// In case of the conf.Env needs an initialization
+	if conf.Env == nil {
+		conf.Env = make(sup.EnvList, 0)
+	}
+
 	args := flag.Args()
 	if len(args) < 1 {
 		networkUsage(conf)
@@ -122,26 +127,14 @@ func parseArgs(conf *sup.Supfile) (*sup.Network, []*sup.Command, error) {
 		return nil, nil, ErrUnknownNetwork
 	}
 
-	// Parse CLI --env flag env vars, override values defined in Network env.
-	for _, env := range envVars {
-		if len(env) == 0 {
-			continue
-		}
-		i := strings.Index(env, "=")
-		if i < 0 {
-			if len(env) > 0 {
-				network.Env.Set(env, "")
-			}
-			continue
-		}
-		network.Env.Set(env[:i], env[i+1:])
-	}
-
-	hosts, err := network.ParseInventory()
+	hosts, err := network.ParseInventory(conf.Env)
 	if err != nil {
 		return nil, nil, err
 	}
 	network.Hosts = append(network.Hosts, hosts...)
+	if network.Env == nil {
+		network.Env = make(sup.EnvList, 0)
+	}
 
 	// Does the <network> have at least one host?
 	if len(network.Hosts) == 0 {
@@ -155,26 +148,8 @@ func parseArgs(conf *sup.Supfile) (*sup.Network, []*sup.Command, error) {
 		return nil, nil, ErrUsage
 	}
 
-	// In case of the network.Env needs an initialization
-	if network.Env == nil {
-		network.Env = make(sup.EnvList, 0)
-	}
-
 	// Add default env variable with current network
 	network.Env.Set("SUP_NETWORK", args[0])
-
-	// Add default nonce
-	network.Env.Set("SUP_TIME", time.Now().UTC().Format(time.RFC3339))
-	if os.Getenv("SUP_TIME") != "" {
-		network.Env.Set("SUP_TIME", os.Getenv("SUP_TIME"))
-	}
-
-	// Add user
-	if os.Getenv("SUP_USER") != "" {
-		network.Env.Set("SUP_USER", os.Getenv("SUP_USER"))
-	} else {
-		network.Env.Set("SUP_USER", os.Getenv("USER"))
-	}
 
 	for _, cmd := range args[1:] {
 		// Target?
@@ -248,7 +223,14 @@ func main() {
 			os.Exit(1)
 		}
 	}
-	conf, err := sup.NewSupfile(data)
+	conf, err := sup.NewSupfile(data,
+		// SUPFILE_DIR might change as sup invocations are chained.
+		sup.WithEnv("SUPFILE_DIR", filepath.Dir(supfile)),
+		// Add default nonce, but inherit from previous invocation.
+		sup.WithInheritEnv("SUP_TIME", time.Now().UTC().Format(time.RFC3339)),
+		// Add user, but inherit from previous invocation.
+		sup.WithInheritEnv("SUP_USER", os.Getenv("USER")),
+	)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
@@ -331,15 +313,6 @@ func main() {
 		}
 	}
 
-	var vars sup.EnvList
-	for _, val := range append(conf.Env, network.Env...) {
-		vars.Set(val.Key, val.Value)
-	}
-	if err := vars.ResolveValues(); err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-
 	// Parse CLI --env flag env vars, define $SUP_ENV and override values defined in Supfile.
 	var cliVars sup.EnvList
 	for _, env := range envVars {
@@ -349,11 +322,10 @@ func main() {
 		i := strings.Index(env, "=")
 		if i < 0 {
 			if len(env) > 0 {
-				vars.Set(env, "")
+				cliVars.Set(env, "")
 			}
 			continue
 		}
-		vars.Set(env[:i], env[i+1:])
 		cliVars.Set(env[:i], env[i+1:])
 	}
 
@@ -363,7 +335,7 @@ func main() {
 	for _, v := range cliVars {
 		supEnv += fmt.Sprintf(" -e %v=%q", v.Key, v.Value)
 	}
-	vars.Set("SUP_ENV", strings.TrimSpace(supEnv))
+	cliVars.Set("SUP_ENV", strings.TrimSpace(supEnv))
 
 	// Create new Stackup app.
 	app, err := sup.New(conf)
@@ -375,7 +347,7 @@ func main() {
 	app.Prefix(!disablePrefix)
 
 	// Run all the commands in the given network.
-	err = app.Run(network, vars, commands...)
+	err = app.Run(network, cliVars, commands...)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
