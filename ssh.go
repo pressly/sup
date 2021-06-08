@@ -21,6 +21,7 @@ type SSHClient struct {
 	sess         *ssh.Session
 	user         string
 	host         string
+	identityFile string
 	remoteStdin  io.WriteCloser
 	remoteStdout io.Reader
 	remoteStderr io.Reader
@@ -80,34 +81,40 @@ var initAuthMethodOnce sync.Once
 var authMethod ssh.AuthMethod
 
 // initAuthMethod initiates SSH authentication method.
-func initAuthMethod() {
-	var signers []ssh.Signer
+func initAuthMethod(identityFilePath string) func() {
+	return func() {
+		var signers []ssh.Signer
 
-	// If there's a running SSH Agent, try to use its Private keys.
-	sock, err := net.Dial("unix", os.Getenv("SSH_AUTH_SOCK"))
-	if err == nil {
-		agent := agent.NewClient(sock)
-		signers, _ = agent.Signers()
+		// If there's a running SSH Agent, try to use its Private keys.
+		sock, err := net.Dial("unix", os.Getenv("SSH_AUTH_SOCK"))
+		if err == nil {
+			agent := agent.NewClient(sock)
+			signers, _ = agent.Signers()
+		}
+
+		// Try to read user's SSH private keys form the standard paths.
+		files, _ := filepath.Glob(os.Getenv("HOME") + "/.ssh/id_*")
+		// Add nonstandard path
+		if identityFilePath != "" {
+			files = append(files, identityFilePath)
+		}
+		for _, file := range files {
+			if strings.HasSuffix(file, ".pub") {
+				continue // Skip public keys.
+			}
+			data, err := ioutil.ReadFile(file)
+			if err != nil {
+				continue
+			}
+			signer, err := ssh.ParsePrivateKey(data)
+			if err != nil {
+				continue
+			}
+			signers = append(signers, signer)
+
+		}
+		authMethod = ssh.PublicKeys(signers...)
 	}
-
-	// Try to read user's SSH private keys form the standard paths.
-	files, _ := filepath.Glob(os.Getenv("HOME") + "/.ssh/id_*")
-	for _, file := range files {
-		if strings.HasSuffix(file, ".pub") {
-			continue // Skip public keys.
-		}
-		data, err := ioutil.ReadFile(file)
-		if err != nil {
-			continue
-		}
-		signer, err := ssh.ParsePrivateKey(data)
-		if err != nil {
-			continue
-		}
-		signers = append(signers, signer)
-
-	}
-	authMethod = ssh.PublicKeys(signers...)
 }
 
 // SSHDialFunc can dial an ssh server and return a client
@@ -127,7 +134,7 @@ func (c *SSHClient) ConnectWith(host string, dialer SSHDialFunc) error {
 		return fmt.Errorf("Already connected")
 	}
 
-	initAuthMethodOnce.Do(initAuthMethod)
+	initAuthMethodOnce.Do(initAuthMethod(c.identityFile))
 
 	err := c.parseHost(host)
 	if err != nil {
