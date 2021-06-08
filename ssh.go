@@ -5,6 +5,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net"
+	"net/url"
 	"os"
 	"os/user"
 	"path/filepath"
@@ -43,16 +44,29 @@ func (e ErrConnect) Error() string {
 
 // parseHost parses and normalizes <user>@<host:port> from a given string.
 func (c *SSHClient) parseHost(host string) error {
-	c.host = host
-
-	// Remove extra "ssh://" schema
-	if len(c.host) > 6 && c.host[:6] == "ssh://" {
-		c.host = c.host[6:]
+	// https://golang.org/pkg/net/url/#URL
+	// [scheme:][//[userinfo@]host][/]path[?query][#fragment]
+	if !strings.Contains(host, "://") && !strings.HasPrefix(host, "//") {
+		host = "ssh://" + host
 	}
 
-	if at := strings.Index(c.host, "@"); at != -1 {
-		c.user = c.host[:at]
-		c.host = c.host[at+1:]
+	hostURL, err := url.Parse(host)
+	if err != nil {
+		return err
+	}
+
+	// Add default port, if not set
+	hostname := hostURL.Hostname()
+	port := hostURL.Port()
+	if port == "" {
+		port = "22"
+	}
+	c.host = net.JoinHostPort(hostname, port)
+
+	if hostURL.User != nil {
+		if u := hostURL.User.Username(); u != "" {
+			c.user = u
+		}
 	}
 
 	// Add default user, if not set
@@ -64,14 +78,7 @@ func (c *SSHClient) parseHost(host string) error {
 		c.user = u.Username
 	}
 
-	if strings.Index(c.host, "/") != -1 {
-		return ErrConnect{c.user, c.host, "unexpected slash in the host URL"}
-	}
-
-	// Add default port, if not set
-	if strings.Index(c.host, ":") == -1 {
-		c.host += ":22"
-	}
+	c.env = c.env + `export SUP_HOST="` + c.host + `";`
 
 	return nil
 }
