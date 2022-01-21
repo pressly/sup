@@ -50,7 +50,8 @@ func (c *SSHClient) parseHost(host string) error {
 		c.host = c.host[6:]
 	}
 
-	if at := strings.Index(c.host, "@"); at != -1 {
+	// Split by the last "@", since there may be an "@" in the username.
+	if at := strings.LastIndex(c.host, "@"); at != -1 {
 		c.user = c.host[:at]
 		c.host = c.host[at+1:]
 	}
