@@ -6,11 +6,9 @@ import (
 	"os"
 	"os/exec"
 	"os/user"
-
-	"github.com/pkg/errors"
 )
 
-// Client is a wrapper over the SSH connection/sessions.
+// LocalhostClient is a wrapper over the SSH connection/sessions.
 type LocalhostClient struct {
 	cmd     *exec.Cmd
 	user    string
@@ -104,16 +102,4 @@ func (c *LocalhostClient) WriteClose() error {
 
 func (c *LocalhostClient) Signal(sig os.Signal) error {
 	return c.cmd.Process.Signal(sig)
-}
-
-func ResolveLocalPath(cwd, path, env string) (string, error) {
-	// Check if file exists first. Use bash to resolve $ENV_VARs.
-	cmd := exec.Command("bash", "-c", env+"echo -n "+path)
-	cmd.Dir = cwd
-	resolvedFilename, err := cmd.Output()
-	if err != nil {
-		return "", errors.Wrap(err, "resolving path failed")
-	}
-
-	return string(resolvedFilename), nil
 }

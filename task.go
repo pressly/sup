@@ -17,7 +17,7 @@ type Task struct {
 	TTY     bool
 }
 
-func (sup *Stackup) createTasks(cmd *Command, clients []Client, env string) ([]*Task, error) {
+func (sup *Stackup) createTasks(cmd *Command, clients []Client) ([]*Task, error) {
 	var tasks []*Task
 
 	cwd, err := os.Getwd()
@@ -27,7 +27,7 @@ func (sup *Stackup) createTasks(cmd *Command, clients []Client, env string) ([]*
 
 	// Anything to upload?
 	for _, upload := range cmd.Upload {
-		uploadFile, err := ResolveLocalPath(cwd, upload.Src, env)
+		uploadFile, err := sup.conf.ResolveLocalPath(cwd, upload.Src)
 		if err != nil {
 			return nil, errors.Wrap(err, "upload: "+upload.Src)
 		}
@@ -64,7 +64,11 @@ func (sup *Stackup) createTasks(cmd *Command, clients []Client, env string) ([]*
 
 	// Script. Read the file as a multiline input command.
 	if cmd.Script != "" {
-		f, err := os.Open(cmd.Script)
+		script, err := sup.conf.ResolveLocalPath(cwd, cmd.Script)
+		if err != nil {
+			return nil, errors.Wrap(err, "can't resolve script path")
+		}
+		f, err := os.Open(script)
 		if err != nil {
 			return nil, errors.Wrap(err, "can't open script")
 		}
@@ -106,7 +110,7 @@ func (sup *Stackup) createTasks(cmd *Command, clients []Client, env string) ([]*
 	// Local command.
 	if cmd.Local != "" {
 		local := &LocalhostClient{
-			env: env + `export SUP_HOST="localhost";`,
+			env: sup.conf.Env.AsExport() + `export SUP_HOST="localhost";`,
 		}
 		local.Connect("localhost")
 		task := &Task{
