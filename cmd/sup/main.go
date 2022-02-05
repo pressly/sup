@@ -137,6 +137,12 @@ func parseArgs(conf *sup.Supfile) (*sup.Network, []*sup.Command, error) {
 		network.Env.Set(env[:i], env[i+1:])
 	}
 
+	bastion, err := network.ParseBastion()
+	if err != nil {
+		return nil, nil, err
+	}
+	network.Bastion = bastion
+
 	hosts, err := network.ParseInventory()
 	if err != nil {
 		return nil, nil, err
