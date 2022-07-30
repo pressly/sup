@@ -329,13 +329,14 @@ func NewSupfile(data []byte) (*Supfile, error) {
 
 // ParseInventory runs the inventory command, if provided, and appends
 // the command's output lines to the manually defined list of hosts.
-func (n Network) ParseInventory() ([]string, error) {
+func (n Network) ParseInventory(conf *Supfile) ([]string, error) {
 	if n.Inventory == "" {
 		return nil, nil
 	}
 
 	cmd := exec.Command("/bin/sh", "-c", n.Inventory)
 	cmd.Env = os.Environ()
+	cmd.Env = append(cmd.Env, conf.Env.Slice()...)
 	cmd.Env = append(cmd.Env, n.Env.Slice()...)
 	cmd.Stderr = os.Stderr
 	output, err := cmd.Output()
