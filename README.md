@@ -3,6 +3,8 @@ Stack Up
 
 Stack Up is a simple deployment tool that performs given set of commands on multiple hosts in parallel. It reads Supfile, a YAML configuration file, which defines networks (groups of hosts), commands and targets.
 
+Project forked from <https://github.com/pressly/sup> (which is currently in stagnant phase).
+
 # Demo
 
 [![Sup](https://github.com/pressly/sup/blob/gif/asciinema.gif?raw=true)](https://asciinema.org/a/19742?autoplay=1)
