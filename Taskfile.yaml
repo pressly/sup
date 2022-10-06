@@ -1,0 +1,35 @@
+version: '3'
+
+tasks:
+  default:
+    deps:
+      - build
+  build:
+    desc: "Build sup"
+    cmds:
+      - mkdir -p ./bin
+      - rm -f ./bin/*
+      - go build -o ./bin/sup ./cmd/sup
+  dist:
+    desc: "Build sup distribution binaries"
+    cmds:
+      - mkdir -p ./bin
+      - rm -f ./bin/*
+      - GOOS=darwin GOARCH=amd64 go build -o ./bin/sup-darwin64 ./cmd/sup
+      - GOOS=linux GOARCH=amd64 go build -o ./bin/sup-linux64 ./cmd/sup
+      - GOOS=linux GOARCH=386 go build -o ./bin/sup-linux386 ./cmd/sup
+      - GOOS=windows GOARCH=amd64 go build -o ./bin/sup-windows64.exe ./cmd/sup
+      - GOOS=windows GOARCH=386 go build -o ./bin/sup-windows386.exe ./cmd/sup      
+  test:
+    desc: "Run tests"
+    cmds:
+      - go test ./...
+  install:
+    desc: "Install binary"
+    cmds:
+      - go install ./cmd/sup
+  clean:
+    desc: "Clean up"
+    cmds:
+      - rm -rf ./bin
+    
