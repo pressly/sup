@@ -65,12 +65,12 @@ func (c *SSHClient) parseHost(host string) error {
 		c.user = u.Username
 	}
 
-	if strings.Index(c.host, "/") != -1 {
+	if strings.Contains(c.host, "/") {
 		return ErrConnect{c.user, c.host, "unexpected slash in the host URL"}
 	}
 
 	// Add default port, if not set
-	if strings.Index(c.host, ":") == -1 {
+	if strings.Contains(c.host, ":") {
 		c.host += ":22"
 	}
 
@@ -288,7 +288,10 @@ func (c *SSHClient) Signal(sig os.Signal) error {
 		// which sounds like something that should be fixed/resolved
 		// upstream in the golang.org/x/crypto/ssh pkg.
 		// https://github.com/golang/go/issues/4115#issuecomment-66070418
-		c.remoteStdin.Write([]byte("\x03"))
+		_, err := c.remoteStdin.Write([]byte("\x03"))
+		if err != nil {
+			return err
+		}
 		return c.sess.Signal(ssh.SIGINT)
 	default:
 		return fmt.Errorf("%v not supported", sig)

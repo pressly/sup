@@ -313,7 +313,7 @@ func NewSupfile(data []byte) (*Supfile, error) {
 			}
 		}
 		if warning != "" {
-			fmt.Fprintf(os.Stderr, warning)
+			fmt.Fprint(os.Stderr, warning)
 		}
 
 		fallthrough

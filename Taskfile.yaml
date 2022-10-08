@@ -4,6 +4,10 @@ tasks:
   default:
     deps:
       - build
+  lint:
+    desc: "Run code linting"
+    cmds:
+      - golangci-lint run ./...
   build:
     desc: "Build sup"
     cmds:

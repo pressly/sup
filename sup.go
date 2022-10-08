@@ -96,15 +96,20 @@ func (sup *Stackup) Run(network *Network, envVars EnvList, commands ...*Command)
 	maxLen := 0
 	var clients []Client
 	for client := range clientCh {
-		if remote, ok := client.(*SSHClient); ok {
-			defer remote.Close()
-		}
 		_, prefixLen := client.Prefix()
 		if prefixLen > maxLen {
 			maxLen = prefixLen
 		}
 		clients = append(clients, client)
 	}
+	defer func(clients []Client) {
+		for _, client := range clients {
+			if remote, ok := client.(*SSHClient); ok {
+				remote.Close()
+			}
+		}
+	}(clients)
+
 	for err := range errCh {
 		return errors.Wrap(err, "connecting to clients failed")
 	}
@@ -182,17 +187,11 @@ func (sup *Stackup) Run(network *Network, envVars EnvList, commands ...*Command)
 			trap := make(chan os.Signal, 1)
 			signal.Notify(trap, os.Interrupt)
 			go func() {
-				for {
-					select {
-					case sig, ok := <-trap:
-						if !ok {
-							return
-						}
-						for _, c := range task.Clients {
-							err := c.Signal(sig)
-							if err != nil {
-								fmt.Fprintf(os.Stderr, "%v", errors.Wrap(err, "sending signal failed"))
-							}
+				for sig := range trap {
+					for _, c := range task.Clients {
+						err := c.Signal(sig)
+						if err != nil {
+							fmt.Fprintf(os.Stderr, "%v", errors.Wrap(err, "sending signal failed"))
 						}
 					}
 				}
