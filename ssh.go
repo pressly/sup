@@ -3,7 +3,6 @@ package sup
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net"
 	"os"
 	"os/user"
@@ -62,15 +61,16 @@ func (c *SSHClient) parseHost(host string) error {
 		if err != nil {
 			return err
 		}
+
 		c.user = u.Username
 	}
 
-	if strings.Index(c.host, "/") != -1 {
+	if strings.Contains(c.host, "/") {
 		return ErrConnect{c.user, c.host, "unexpected slash in the host URL"}
 	}
 
 	// Add default port, if not set
-	if strings.Index(c.host, ":") == -1 {
+	if strings.Contains(c.host, ":") {
 		c.host += ":22"
 	}
 
@@ -87,27 +87,31 @@ func initAuthMethod() {
 	// If there's a running SSH Agent, try to use its Private keys.
 	sock, err := net.Dial("unix", os.Getenv("SSH_AUTH_SOCK"))
 	if err == nil {
-		agent := agent.NewClient(sock)
-		signers, _ = agent.Signers()
+		sshAgent := agent.NewClient(sock)
+		signers, _ = sshAgent.Signers()
 	}
 
 	// Try to read user's SSH private keys form the standard paths.
 	files, _ := filepath.Glob(os.Getenv("HOME") + "/.ssh/id_*")
+
 	for _, file := range files {
 		if strings.HasSuffix(file, ".pub") {
 			continue // Skip public keys.
 		}
-		data, err := ioutil.ReadFile(file)
+
+		data, err := os.ReadFile(file)
 		if err != nil {
 			continue
 		}
+
 		signer, err := ssh.ParsePrivateKey(data)
 		if err != nil {
 			continue
 		}
-		signers = append(signers, signer)
 
+		signers = append(signers, signer)
 	}
+
 	authMethod = ssh.PublicKeys(signers...)
 }
 
@@ -125,7 +129,7 @@ func (c *SSHClient) Connect(host string) error {
 // TODO: Split Signers to its own method.
 func (c *SSHClient) ConnectWith(host string, dialer SSHDialFunc) error {
 	if c.connOpened {
-		return fmt.Errorf("Already connected")
+		return fmt.Errorf("already connected")
 	}
 
 	initAuthMethodOnce.Do(initAuthMethod)
@@ -140,13 +144,14 @@ func (c *SSHClient) ConnectWith(host string, dialer SSHDialFunc) error {
 		Auth: []ssh.AuthMethod{
 			authMethod,
 		},
-		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+		HostKeyCallback: ssh.InsecureIgnoreHostKey(), //nolint:gosec // TODO: check if there is possibility to change this
 	}
 
 	c.conn, err = dialer("tcp", c.host, config)
 	if err != nil {
 		return ErrConnect{c.user, c.host, err.Error()}
 	}
+
 	c.connOpened = true
 
 	return nil
@@ -155,10 +160,11 @@ func (c *SSHClient) ConnectWith(host string, dialer SSHDialFunc) error {
 // Run runs the task.Run command remotely on c.host.
 func (c *SSHClient) Run(task *Task) error {
 	if c.running {
-		return fmt.Errorf("Session already running")
+		return fmt.Errorf("session already running")
 	}
+
 	if c.sessOpened {
-		return fmt.Errorf("Session already connected")
+		return fmt.Errorf("session already connected")
 	}
 
 	sess, err := c.conn.NewSession()
@@ -202,6 +208,7 @@ func (c *SSHClient) Run(task *Task) error {
 	c.sess = sess
 	c.sessOpened = true
 	c.running = true
+
 	return nil
 }
 
@@ -209,7 +216,7 @@ func (c *SSHClient) Run(task *Task) error {
 // It closes the SSH session.
 func (c *SSHClient) Wait() error {
 	if !c.running {
-		return fmt.Errorf("Trying to wait on stopped session")
+		return fmt.Errorf("trying to wait on stopped session")
 	}
 
 	err := c.sess.Wait()
@@ -221,17 +228,18 @@ func (c *SSHClient) Wait() error {
 }
 
 // DialThrough will create a new connection from the ssh server sc is connected to. DialThrough is an SSHDialer.
-func (sc *SSHClient) DialThrough(net, addr string, config *ssh.ClientConfig) (*ssh.Client, error) {
-	conn, err := sc.conn.Dial(net, addr)
+func (sc *SSHClient) DialThrough(protocol, addr string, config *ssh.ClientConfig) (*ssh.Client, error) {
+	conn, err := sc.conn.Dial(protocol, addr)
 	if err != nil {
 		return nil, err
 	}
+
 	c, chans, reqs, err := ssh.NewClientConn(conn, addr, config)
 	if err != nil {
 		return nil, err
 	}
-	return ssh.NewClient(c, chans, reqs), nil
 
+	return ssh.NewClient(c, chans, reqs), nil
 }
 
 // Close closes the underlying SSH connection and session.
@@ -240,8 +248,9 @@ func (c *SSHClient) Close() error {
 		c.sess.Close()
 		c.sessOpened = false
 	}
+
 	if !c.connOpened {
-		return fmt.Errorf("Trying to close the already closed connection")
+		return fmt.Errorf("trying to close the already closed connection")
 	}
 
 	err := c.conn.Close()
@@ -263,7 +272,7 @@ func (c *SSHClient) Stdout() io.Reader {
 	return c.remoteStdout
 }
 
-func (c *SSHClient) Prefix() (string, int) {
+func (c *SSHClient) Prefix() (prefix string, prefixLen int) {
 	host := c.user + "@" + c.host + " | "
 	return c.color + host + ResetColor, len(host)
 }
@@ -288,7 +297,11 @@ func (c *SSHClient) Signal(sig os.Signal) error {
 		// which sounds like something that should be fixed/resolved
 		// upstream in the golang.org/x/crypto/ssh pkg.
 		// https://github.com/golang/go/issues/4115#issuecomment-66070418
-		c.remoteStdin.Write([]byte("\x03"))
+		_, err := c.remoteStdin.Write([]byte("\x03"))
+		if err != nil {
+			return err
+		}
+
 		return c.sess.Signal(ssh.SIGINT)
 	default:
 		return fmt.Errorf("%v not supported", sig)

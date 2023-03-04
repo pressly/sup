@@ -1,24 +1,37 @@
 package main
 
 import (
-	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
+	"time"
 )
 
 func main() {
-	config, err := ioutil.ReadFile("/etc/example.cfg")
+	config, err := os.ReadFile("/etc/example.cfg")
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	// Define handler that returns "Hello $ENV"
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("Hello "))
-		w.Write(config)
+		_, err := w.Write([]byte("Hello "))
+		if err != nil {
+			panic(err)
+		}
+
+		_, err = w.Write(config)
+		if err != nil {
+			panic(err)
+		}
 	})
 
-	err = http.ListenAndServe(":8000", nil)
+	server := &http.Server{
+		Addr:              ":8000",
+		ReadHeaderTimeout: 5 * time.Second,
+	}
+
+	err = server.ListenAndServe()
 	if err != nil {
 		log.Fatal(err)
 	}

@@ -47,14 +47,21 @@ func (n *Networks) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	}
 
 	var items yaml.MapSlice
+
+	var ok bool
+
 	err = unmarshal(&items)
 	if err != nil {
 		return err
 	}
 
 	n.Names = make([]string, len(items))
+
 	for i, item := range items {
-		n.Names[i] = item.Key.(string)
+		n.Names[i], ok = item.Key.(string)
+		if !ok {
+			return fmt.Errorf("assertion to string failed")
+		}
 	}
 
 	return nil
@@ -70,8 +77,8 @@ type Command struct {
 	Name   string   `yaml:"-"`      // Command name.
 	Desc   string   `yaml:"desc"`   // Command description.
 	Local  string   `yaml:"local"`  // Command(s) to be run locally.
-	Run    string   `yaml:"run"`    // Command(s) to be run remotelly.
-	Script string   `yaml:"script"` // Load command(s) from script and run it remotelly.
+	Run    string   `yaml:"run"`    // Command(s) to be run remotely.
+	Script string   `yaml:"script"` // Load command(s) from script and run it remotely.
 	Upload []Upload `yaml:"upload"` // See Upload struct.
 	Stdin  bool     `yaml:"stdin"`  // Attach localhost STDOUT to remote commands' STDIN?
 	Once   bool     `yaml:"once"`   // The command should be run "once" (on one host only).
@@ -94,6 +101,9 @@ func (c *Commands) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	}
 
 	var items yaml.MapSlice
+
+	var ok bool
+
 	err = unmarshal(&items)
 	if err != nil {
 		return err
@@ -101,7 +111,10 @@ func (c *Commands) UnmarshalYAML(unmarshal func(interface{}) error) error {
 
 	c.Names = make([]string, len(items))
 	for i, item := range items {
-		c.Names[i] = item.Key.(string)
+		c.Names[i], ok = item.Key.(string)
+		if !ok {
+			return fmt.Errorf("assertion to string failed")
+		}
 	}
 
 	return nil
@@ -125,6 +138,9 @@ func (t *Targets) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	}
 
 	var items yaml.MapSlice
+
+	var ok bool
+
 	err = unmarshal(&items)
 	if err != nil {
 		return err
@@ -132,7 +148,10 @@ func (t *Targets) UnmarshalYAML(unmarshal func(interface{}) error) error {
 
 	t.Names = make([]string, len(items))
 	for i, item := range items {
-		t.Names[i] = item.Key.(string)
+		t.Names[i], ok = item.Key.(string)
+		if !ok {
+			return fmt.Errorf("assertion to string failed")
+		}
 	}
 
 	return nil
@@ -172,9 +191,11 @@ type EnvList []*EnvVar
 
 func (e EnvList) Slice() []string {
 	envs := make([]string, len(e))
+
 	for i, env := range e {
 		envs[i] = env.String()
 	}
+
 	return envs
 }
 
@@ -216,15 +237,23 @@ func (e *EnvList) ResolveValues() error {
 	}
 
 	exports := ""
+
 	for i, v := range *e {
 		exports += v.AsExport()
 
-		cmd := exec.Command("bash", "-c", exports+"echo -n "+v.Value+";")
+		resolveValuesArgs := []string{
+			"-c",
+			exports + "echo -n " + v.Value + ";",
+		}
+		cmd := exec.Command("bash", resolveValuesArgs...)
+
 		cwd, err := os.Getwd()
 		if err != nil {
 			return err
 		}
+
 		cmd.Dir = cwd
+
 		resolvedValue, err := cmd.Output()
 		if err != nil {
 			return errors.Wrapf(err, "resolving env var %v failed", v.Key)
@@ -240,9 +269,11 @@ func (e *EnvList) AsExport() string {
 	// Process all ENVs into a string of form
 	// `export FOO="bar"; export BAR="baz";`.
 	exports := ``
+
 	for _, v := range *e {
 		exports += v.AsExport() + " "
 	}
+
 	return exports
 }
 
@@ -282,6 +313,7 @@ func NewSupfile(data []byte) (*Supfile, error) {
 				return nil, ErrMustUpdate{"command.run_once is not supported in Supfile v" + conf.Version}
 			}
 		}
+
 		fallthrough
 
 	case "0.2":
@@ -289,22 +321,27 @@ func NewSupfile(data []byte) (*Supfile, error) {
 			if cmd.Once {
 				return nil, ErrMustUpdate{"command.once is not supported in Supfile v" + conf.Version}
 			}
+
 			if cmd.Local != "" {
 				return nil, ErrMustUpdate{"command.local is not supported in Supfile v" + conf.Version}
 			}
+
 			if cmd.Serial != 0 {
 				return nil, ErrMustUpdate{"command.serial is not supported in Supfile v" + conf.Version}
 			}
 		}
+
 		for _, network := range conf.Networks.nets {
 			if network.Inventory != "" {
 				return nil, ErrMustUpdate{"network.inventory is not supported in Supfile v" + conf.Version}
 			}
 		}
+
 		fallthrough
 
 	case "0.3":
 		var warning string
+
 		for key, cmd := range conf.Commands.cmds {
 			if cmd.RunOnce {
 				warning = "Warning: command.run_once was deprecated by command.once in Supfile v" + conf.Version + "\n"
@@ -312,8 +349,9 @@ func NewSupfile(data []byte) (*Supfile, error) {
 				conf.Commands.cmds[key] = cmd
 			}
 		}
+
 		if warning != "" {
-			fmt.Fprintf(os.Stderr, warning)
+			fmt.Fprint(os.Stderr, warning)
 		}
 
 		fallthrough
@@ -334,23 +372,31 @@ func (n Network) ParseInventory() ([]string, error) {
 		return nil, nil
 	}
 
-	cmd := exec.Command("/bin/sh", "-c", n.Inventory)
+	parseInventoryArgs := []string{
+		"-c",
+		n.Inventory,
+	}
+	cmd := exec.Command("/bin/sh", parseInventoryArgs...)
 	cmd.Env = os.Environ()
 	cmd.Env = append(cmd.Env, n.Env.Slice()...)
 	cmd.Stderr = os.Stderr
+
 	output, err := cmd.Output()
 	if err != nil {
 		return nil, err
 	}
 
 	var hosts []string
+
 	buf := bytes.NewBuffer(output)
+
 	for {
 		host, err := buf.ReadString('\n')
 		if err != nil {
 			if err == io.EOF {
 				break
 			}
+
 			return nil, err
 		}
 
@@ -362,5 +408,6 @@ func (n Network) ParseInventory() ([]string, error) {
 
 		hosts = append(hosts, host)
 	}
+
 	return hosts, nil
 }

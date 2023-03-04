@@ -16,7 +16,7 @@ import (
 // to properly receive the created TAR stream.
 // TODO: Check for relative directory.
 func RemoteTarCommand(dir string) string {
-	return fmt.Sprintf("tar -C \"%s\" -xzf -", dir)
+	return fmt.Sprintf("tar -C \"%q\" -xzf -", dir)
 }
 
 func LocalTarCmdArgs(path, exclude string) []string {
@@ -24,6 +24,7 @@ func LocalTarCmdArgs(path, exclude string) []string {
 
 	// Added pattens to exclude from tar compress
 	excludes := strings.Split(exclude, ",")
+
 	for _, exclude := range excludes {
 		trimmed := strings.TrimSpace(exclude)
 		if trimmed != "" {
@@ -32,14 +33,17 @@ func LocalTarCmdArgs(path, exclude string) []string {
 	}
 
 	args = append(args, "-C", ".", "-czf", "-", path)
+
 	return args
 }
 
 // NewTarStreamReader creates a tar stream reader from a local path.
 // TODO: Refactor. Use "archive/tar" instead.
 func NewTarStreamReader(cwd, path, exclude string) (io.Reader, error) {
-	cmd := exec.Command("tar", LocalTarCmdArgs(path, exclude)...)
+	localTarCmdArgs := LocalTarCmdArgs(path, exclude)
+	cmd := exec.Command("tar", localTarCmdArgs...)
 	cmd.Dir = cwd
+
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		return nil, errors.Wrap(err, "tar: stdout pipe failed")

@@ -28,6 +28,7 @@ func (c *LocalhostClient) Connect(_ string) error {
 	}
 
 	c.user = u.Username
+
 	return nil
 }
 
@@ -38,7 +39,11 @@ func (c *LocalhostClient) Run(task *Task) error {
 		return fmt.Errorf("Command already running")
 	}
 
-	cmd := exec.Command("bash", "-c", c.env+task.Run)
+	cmdArgs := []string{
+		"-c",
+		c.env + task.Run,
+	}
+	cmd := exec.Command("bash", cmdArgs...)
 	c.cmd = cmd
 
 	c.stdout, err = cmd.StdoutPipe()
@@ -61,15 +66,18 @@ func (c *LocalhostClient) Run(task *Task) error {
 	}
 
 	c.running = true
+
 	return nil
 }
 
 func (c *LocalhostClient) Wait() error {
 	if !c.running {
-		return fmt.Errorf("Trying to wait on stopped command")
+		return fmt.Errorf("trying to wait on stopped command")
 	}
+
 	err := c.cmd.Wait()
 	c.running = false
+
 	return err
 }
 
@@ -89,7 +97,7 @@ func (c *LocalhostClient) Stdout() io.Reader {
 	return c.stdout
 }
 
-func (c *LocalhostClient) Prefix() (string, int) {
+func (c *LocalhostClient) Prefix() (prefix string, prefixLen int) {
 	host := c.user + "@localhost" + " | "
 	return ResetColor + host, len(host)
 }
@@ -108,8 +116,13 @@ func (c *LocalhostClient) Signal(sig os.Signal) error {
 
 func ResolveLocalPath(cwd, path, env string) (string, error) {
 	// Check if file exists first. Use bash to resolve $ENV_VARs.
-	cmd := exec.Command("bash", "-c", env+"echo -n "+path)
+	resolveEnvVarsArgs := []string{
+		"-c",
+		env + "echo -n " + path,
+	}
+	cmd := exec.Command("bash", resolveEnvVarsArgs...)
 	cmd.Dir = cwd
+
 	resolvedFilename, err := cmd.Output()
 	if err != nil {
 		return "", errors.Wrap(err, "resolving path failed")

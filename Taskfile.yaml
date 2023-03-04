@@ -1,0 +1,10 @@
+# https://taskfile.dev
+
+version: '3'
+
+vars:
+  lint:
+    desc: runs golangci-lint linter
+    cmds:
+      - golangci-lint run --timeout 5m ./...
+    silent: true

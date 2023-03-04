@@ -3,7 +3,6 @@ package sup
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 
 	"github.com/pkg/errors"
@@ -31,6 +30,7 @@ func (sup *Stackup) createTasks(cmd *Command, clients []Client, env string) ([]*
 		if err != nil {
 			return nil, errors.Wrap(err, "upload: "+upload.Src)
 		}
+
 		uploadTarReader, err := NewTarStreamReader(cwd, uploadFile, upload.Exc)
 		if err != nil {
 			return nil, errors.Wrap(err, "upload: "+upload.Src)
@@ -42,21 +42,23 @@ func (sup *Stackup) createTasks(cmd *Command, clients []Client, env string) ([]*
 			TTY:   false,
 		}
 
-		if cmd.Once {
+		switch {
+		case cmd.Once:
 			task.Clients = []Client{clients[0]}
 			tasks = append(tasks, &task)
-		} else if cmd.Serial > 0 {
+		case cmd.Serial > 0:
 			// Each "serial" task client group is executed sequentially.
 			for i := 0; i < len(clients); i += cmd.Serial {
 				j := i + cmd.Serial
 				if j > len(clients) {
 					j = len(clients)
 				}
-				copy := task
-				copy.Clients = clients[i:j]
-				tasks = append(tasks, &copy)
+
+				taskCopy := task
+				taskCopy.Clients = clients[i:j]
+				tasks = append(tasks, &taskCopy)
 			}
-		} else {
+		default:
 			task.Clients = clients
 			tasks = append(tasks, &task)
 		}
@@ -68,7 +70,8 @@ func (sup *Stackup) createTasks(cmd *Command, clients []Client, env string) ([]*
 		if err != nil {
 			return nil, errors.Wrap(err, "can't open script")
 		}
-		data, err := ioutil.ReadAll(f)
+
+		data, err := io.ReadAll(f)
 		if err != nil {
 			return nil, errors.Wrap(err, "can't read script")
 		}
@@ -80,24 +83,28 @@ func (sup *Stackup) createTasks(cmd *Command, clients []Client, env string) ([]*
 		if sup.debug {
 			task.Run = "set -x;" + task.Run
 		}
+
 		if cmd.Stdin {
 			task.Input = os.Stdin
 		}
-		if cmd.Once {
+
+		switch {
+		case cmd.Once:
 			task.Clients = []Client{clients[0]}
 			tasks = append(tasks, &task)
-		} else if cmd.Serial > 0 {
+		case cmd.Serial > 0:
 			// Each "serial" task client group is executed sequentially.
 			for i := 0; i < len(clients); i += cmd.Serial {
 				j := i + cmd.Serial
 				if j > len(clients) {
 					j = len(clients)
 				}
-				copy := task
-				copy.Clients = clients[i:j]
-				tasks = append(tasks, &copy)
+
+				taskCopy := task
+				taskCopy.Clients = clients[i:j]
+				tasks = append(tasks, &taskCopy)
 			}
-		} else {
+		default:
 			task.Clients = clients
 			tasks = append(tasks, &task)
 		}
@@ -108,18 +115,26 @@ func (sup *Stackup) createTasks(cmd *Command, clients []Client, env string) ([]*
 		local := &LocalhostClient{
 			env: env + `export SUP_HOST="localhost";`,
 		}
-		local.Connect("localhost")
+
+		err := local.Connect("localhost")
+		if err != nil {
+			return nil, err
+		}
+
 		task := &Task{
 			Run:     cmd.Local,
 			Clients: []Client{local},
 			TTY:     true,
 		}
+
 		if sup.debug {
 			task.Run = "set -x;" + task.Run
 		}
+
 		if cmd.Stdin {
 			task.Input = os.Stdin
 		}
+
 		tasks = append(tasks, task)
 	}
 
@@ -132,24 +147,28 @@ func (sup *Stackup) createTasks(cmd *Command, clients []Client, env string) ([]*
 		if sup.debug {
 			task.Run = "set -x;" + task.Run
 		}
+
 		if cmd.Stdin {
 			task.Input = os.Stdin
 		}
-		if cmd.Once {
+
+		switch {
+		case cmd.Once:
 			task.Clients = []Client{clients[0]}
 			tasks = append(tasks, &task)
-		} else if cmd.Serial > 0 {
+		case cmd.Serial > 0:
 			// Each "serial" task client group is executed sequentially.
 			for i := 0; i < len(clients); i += cmd.Serial {
 				j := i + cmd.Serial
 				if j > len(clients) {
 					j = len(clients)
 				}
-				copy := task
-				copy.Clients = clients[i:j]
-				tasks = append(tasks, &copy)
+
+				taskCopy := task
+				taskCopy.Clients = clients[i:j]
+				tasks = append(tasks, &taskCopy)
 			}
-		} else {
+		default:
 			task.Clients = clients
 			tasks = append(tasks, &task)
 		}
