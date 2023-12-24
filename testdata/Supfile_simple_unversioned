@@ -1,0 +1,9 @@
+networks:
+    one:
+        hosts:
+            - user@host.example.org:22
+            - user2@host2.example.org
+commands:
+    hello-world:
+        desc: Hello world!
+        run: echo "hello world"

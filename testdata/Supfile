@@ -1,0 +1,24 @@
+networks:
+    one:
+        hosts:
+            - user@host.example.org:22
+            - user2@host2.example.org
+    two:
+        hosts:
+            - root@node1.example.org
+            - root@node2.example.org
+            - root@node3.example.org
+
+commands:
+    hello-world:
+        desc: Hello world!
+        run: echo "hello world"
+    foo:
+        desc: Foo command
+        run: sudo echo "foo"
+    bar:
+        desc: Bar command
+        run: sudo echo "bar"
+    baz:
+        desc: Baz command
+        run: sudo echo "baz"                
