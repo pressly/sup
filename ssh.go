@@ -274,7 +274,7 @@ func (c *SSHClient) Close() error {
 		c.sessOpened = false
 	}
 	if !c.connOpened {
-		return fmt.Errorf("Trying to close the already closed connection")
+		return fmt.Errorf("trying to close the already closed connection")
 	}
 
 	err := c.conn.Close()
