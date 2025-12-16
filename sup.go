@@ -13,7 +13,7 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
-const VERSION = "0.5"
+const VERSION = "0.5.1"
 
 type Stackup struct {
 	conf   *Supfile
@@ -29,7 +29,8 @@ func New(conf *Supfile) (*Stackup, error) {
 
 // Run runs set of commands on multiple hosts defined by network sequentially.
 // TODO: This megamoth method needs a big refactor and should be split
-//       to multiple smaller methods.
+//
+//	to multiple smaller methods.
 func (sup *Stackup) Run(network *Network, envVars EnvList, commands ...*Command) error {
 	if len(commands) == 0 {
 		return errors.New("no commands to be run")

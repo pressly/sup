@@ -1,2 +1,4 @@
 bin/
 *.sw?
+tmp
+lab

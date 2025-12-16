@@ -5,6 +5,7 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 
 	"github.com/pkg/errors"
 )
@@ -31,7 +32,19 @@ func (sup *Stackup) createTasks(cmd *Command, clients []Client, env string) ([]*
 		if err != nil {
 			return nil, errors.Wrap(err, "upload: "+upload.Src)
 		}
-		uploadTarReader, err := NewTarStreamReader(cwd, uploadFile, upload.Exc)
+
+		tarBaseDir := "."
+		tarTarget := uploadFile
+
+		if upload.Flatten {
+			// If flatten is true, we change directory to the file's parent
+			// and archive only the filename.
+			// e.g. "./bin/squeed" -> BaseDir: "./bin", Target: "squeed"
+			tarBaseDir = filepath.Dir(uploadFile)
+			tarTarget = filepath.Base(uploadFile)
+		}
+
+		uploadTarReader, err := NewTarStreamReader(cwd, tarBaseDir, tarTarget, upload.Exc)
 		if err != nil {
 			return nil, errors.Wrap(err, "upload: "+upload.Src)
 		}

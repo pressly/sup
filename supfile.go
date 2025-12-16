@@ -146,9 +146,10 @@ func (t *Targets) Get(name string) ([]string, bool) {
 // Upload represents file copy operation from localhost Src path to Dst
 // path of every host in a given Network.
 type Upload struct {
-	Src string `yaml:"src"`
-	Dst string `yaml:"dst"`
-	Exc string `yaml:"exclude"`
+	Src     string `yaml:"src"`
+	Dst     string `yaml:"dst"`
+	Exc     string `yaml:"exclude"`
+	Flatten bool   `yaml:"flatten"`
 }
 
 // EnvVar represents an environment variable
@@ -318,8 +319,7 @@ func NewSupfile(data []byte) (*Supfile, error) {
 
 		fallthrough
 
-	case "0.4", "0.5":
-
+	case "0.4", "0.5", "0.5.1":
 	default:
 		return nil, ErrUnsupportedSupfileVersion{"unsupported Supfile version " + conf.Version}
 	}
