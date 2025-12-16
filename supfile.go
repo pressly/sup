@@ -28,6 +28,7 @@ type Network struct {
 	Inventory string   `yaml:"inventory"`
 	Hosts     []string `yaml:"hosts"`
 	Bastion   string   `yaml:"bastion"` // Jump host for the environment
+	Password  string   `yaml:"password"`
 
 	// Should these live on Hosts too? We'd have to change []string to struct, even in Supfile.
 	User         string // `yaml:"user"`

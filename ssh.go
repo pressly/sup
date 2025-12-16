@@ -13,6 +13,7 @@ import (
 
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/agent"
+	"golang.org/x/crypto/ssh/terminal"
 )
 
 // Client is a wrapper over the SSH connection/sessions.
@@ -29,6 +30,10 @@ type SSHClient struct {
 	running      bool
 	env          string //export FOO="bar"; export BAR="baz";
 	color        string
+
+	ask      bool   // For interactive "ask:root@..."
+	password string // For config "password: ..."
+
 }
 
 type ErrConnect struct {
@@ -54,6 +59,15 @@ func (c *SSHClient) parseHost(host string) error {
 	if at := strings.LastIndex(c.host, "@"); at != -1 {
 		c.user = c.host[:at]
 		c.host = c.host[at+1:]
+
+		// Check if the username starts with "ask:"
+		c.ask = false
+		if strings.HasPrefix(c.user, "ask:") {
+			// Remove "ask:" from the username
+			c.user = strings.TrimPrefix(c.user, "ask:")
+			// Set the flag so ConnectWith knows to prompt
+			c.ask = true
+		}
 	}
 
 	// Add default user, if not set
@@ -135,11 +149,30 @@ func (c *SSHClient) ConnectWith(host string, dialer SSHDialFunc) error {
 		return err
 	}
 
+	// 1. Start with Public Keys (SSH Agent + ~/.ssh/id_rsa)
+	auths := []ssh.AuthMethod{
+		authMethod,
+	}
+
+	// 2. If a password was provided in Supfile, add it to the list
+	if c.password != "" {
+		auths = append(auths, ssh.Password(c.password))
+	}
+
+	// 3. If the user requested an interactive prompt (ask:user@host), ask now
+	if c.ask {
+		fmt.Printf("Enter Password for %s@%s: ", c.user, c.host)
+		pass, err := terminal.ReadPassword(int(os.Stdin.Fd()))
+		if err != nil {
+			return err
+		}
+		fmt.Println("") // Print newline after input
+		auths = append(auths, ssh.Password(string(pass)))
+	}
+
 	config := &ssh.ClientConfig{
-		User: c.user,
-		Auth: []ssh.AuthMethod{
-			authMethod,
-		},
+		User:            c.user,
+		Auth:            auths, // Use the combined list of auth methods
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 	}
 
@@ -155,10 +188,10 @@ func (c *SSHClient) ConnectWith(host string, dialer SSHDialFunc) error {
 // Run runs the task.Run command remotely on c.host.
 func (c *SSHClient) Run(task *Task) error {
 	if c.running {
-		return fmt.Errorf("Session already running")
+		return fmt.Errorf("session already running")
 	}
 	if c.sessOpened {
-		return fmt.Errorf("Session already connected")
+		return fmt.Errorf("session already connected")
 	}
 
 	sess, err := c.conn.NewSession()
