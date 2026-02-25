@@ -16,7 +16,7 @@ import (
 // to properly receive the created TAR stream.
 // TODO: Check for relative directory.
 func RemoteTarCommand(dir string, useSudo bool) string {
-	cmd := fmt.Sprintf("tar -C \"%s\" -xzf -", dir)
+	cmd := fmt.Sprintf("tar --warning=no-unknown-keyword -C \"%s\" -xzf -", dir)
 	if useSudo {
 		return "sudo " + cmd
 	}
@@ -24,11 +24,11 @@ func RemoteTarCommand(dir string, useSudo bool) string {
 }
 
 func LocalTarCmdArgs(basedir, path, exclude string) []string {
-	args := []string{}
+	var args []string
 
 	// Added pattens to exclude from tar compress
-	excludes := strings.Split(exclude, ",")
-	for _, exclude := range excludes {
+	excludes := strings.SplitSeq(exclude, ",")
+	for exclude := range excludes {
 		trimmed := strings.TrimSpace(exclude)
 		if trimmed != "" {
 			args = append(args, `--exclude=`+trimmed)

@@ -85,10 +85,7 @@ func (sup *Stackup) createTasks(cmd *Command, clients []Client, env string) ([]*
 			tasks = append(tasks, &task)
 		} else if cmd.Serial > 0 {
 			for i := 0; i < len(clients); i += cmd.Serial {
-				j := i + cmd.Serial
-				if j > len(clients) {
-					j = len(clients)
-				}
+				j := min(i+cmd.Serial, len(clients))
 				copy := task
 				copy.Clients = clients[i:j]
 				tasks = append(tasks, &copy)
@@ -124,10 +121,7 @@ func (sup *Stackup) createTasks(cmd *Command, clients []Client, env string) ([]*
 			tasks = append(tasks, &task)
 		} else if cmd.Serial > 0 {
 			for i := 0; i < len(clients); i += cmd.Serial {
-				j := i + cmd.Serial
-				if j > len(clients) {
-					j = len(clients)
-				}
+				j := min(i+cmd.Serial, len(clients))
 				copy := task
 				copy.Clients = clients[i:j]
 				tasks = append(tasks, &copy)
@@ -173,10 +167,7 @@ func (sup *Stackup) createTasks(cmd *Command, clients []Client, env string) ([]*
 			tasks = append(tasks, &task)
 		} else if cmd.Serial > 0 {
 			for i := 0; i < len(clients); i += cmd.Serial {
-				j := i + cmd.Serial
-				if j > len(clients) {
-					j = len(clients)
-				}
+				j := min(i+cmd.Serial, len(clients))
 				copy := task
 				copy.Clients = clients[i:j]
 				tasks = append(tasks, &copy)

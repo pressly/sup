@@ -62,9 +62,9 @@ func (c *SSHClient) parseHost(host string) error {
 
 		// Check if the username starts with "ask:"
 		c.ask = false
-		if strings.HasPrefix(c.user, "ask:") {
+		if after, ok := strings.CutPrefix(c.user, "ask:"); ok {
 			// Remove "ask:" from the username
-			c.user = strings.TrimPrefix(c.user, "ask:")
+			c.user = after
 			// Set the flag so ConnectWith knows to prompt
 			c.ask = true
 		}

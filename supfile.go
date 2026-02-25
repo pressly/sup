@@ -35,7 +35,7 @@ type Networks struct {
 	nets  map[string]Network
 }
 
-func (n *Networks) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (n *Networks) UnmarshalYAML(unmarshal func(any) error) error {
 	err := unmarshal(&n.nets)
 	if err != nil {
 		return err
@@ -79,7 +79,7 @@ type Commands struct {
 	cmds  map[string]Command
 }
 
-func (c *Commands) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (c *Commands) UnmarshalYAML(unmarshal func(any) error) error {
 	err := unmarshal(&c.cmds)
 	if err != nil {
 		return err
@@ -109,7 +109,7 @@ type Targets struct {
 	targets map[string][]string
 }
 
-func (t *Targets) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (t *Targets) UnmarshalYAML(unmarshal func(any) error) error {
 	err := unmarshal(&t.targets)
 	if err != nil {
 		return err
@@ -165,7 +165,7 @@ func (e EnvList) Slice() []string {
 	return envs
 }
 
-func (e *EnvList) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (e *EnvList) UnmarshalYAML(unmarshal func(any) error) error {
 	items := []yaml.MapItem{}
 
 	err := unmarshal(&items)
@@ -201,11 +201,11 @@ func (e *EnvList) ResolveValues() error {
 		return nil
 	}
 
-	exports := ""
+	var exports strings.Builder
 	for i, v := range *e {
-		exports += v.AsExport()
+		exports.WriteString(v.AsExport())
 
-		cmd := exec.Command("bash", "-c", exports+"echo -n "+v.Value+";")
+		cmd := exec.Command("bash", "-c", exports.String()+"echo -n "+v.Value+";")
 		cwd, err := os.Getwd()
 		if err != nil {
 			return err
@@ -223,11 +223,11 @@ func (e *EnvList) ResolveValues() error {
 }
 
 func (e *EnvList) AsExport() string {
-	exports := ``
+	var exports strings.Builder
 	for _, v := range *e {
-		exports += v.AsExport() + " "
+		exports.WriteString(v.AsExport() + " ")
 	}
-	return exports
+	return exports.String()
 }
 
 type ErrMustUpdate struct {

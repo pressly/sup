@@ -125,14 +125,14 @@ func parseArgs(conf *sup.Supfile) (*sup.Network, []*sup.Command, error) {
 		if len(env) == 0 {
 			continue
 		}
-		i := strings.Index(env, "=")
-		if i < 0 {
+		before, after, ok0 := strings.Cut(env, "=")
+		if !ok0 {
 			if len(env) > 0 {
 				network.Env.Set(env, "")
 			}
 			continue
 		}
-		network.Env.Set(env[:i], env[i+1:])
+		network.Env.Set(before, after)
 	}
 
 	hosts, err := network.ParseInventory()
@@ -335,24 +335,24 @@ func main() {
 		if len(env) == 0 {
 			continue
 		}
-		i := strings.Index(env, "=")
-		if i < 0 {
+		before, after, ok := strings.Cut(env, "=")
+		if !ok {
 			if len(env) > 0 {
 				vars.Set(env, "")
 			}
 			continue
 		}
-		vars.Set(env[:i], env[i+1:])
-		cliVars.Set(env[:i], env[i+1:])
+		vars.Set(before, after)
+		cliVars.Set(before, after)
 	}
 
 	// SUP_ENV is generated only from CLI env vars.
 	// Separate loop to omit duplicates.
-	supEnv := ""
+	var supEnv strings.Builder
 	for _, v := range cliVars {
-		supEnv += fmt.Sprintf(" -e %v=%q", v.Key, v.Value)
+		supEnv.WriteString(fmt.Sprintf(" -e %v=%q", v.Key, v.Value))
 	}
-	vars.Set("SUP_ENV", strings.TrimSpace(supEnv))
+	vars.Set("SUP_ENV", strings.TrimSpace(supEnv.String()))
 
 	// Create new Stackup app.
 	app, err := sup.New(conf)
