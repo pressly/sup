@@ -7,15 +7,28 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/cheggaaa/pb/v3"
 	"github.com/pkg/errors"
 )
 
-// Task represents a set of commands to be run.
 type Task struct {
 	Run     string
 	Input   io.Reader
 	Clients []Client
 	TTY     bool
+}
+
+type finishReader struct {
+	io.Reader
+	bar *pb.ProgressBar
+}
+
+func (r *finishReader) Read(p []byte) (n int, err error) {
+	n, err = r.Reader.Read(p)
+	if err == io.EOF {
+		r.bar.Finish()
+	}
+	return
 }
 
 func (sup *Stackup) createTasks(cmd *Command, clients []Client, env string) ([]*Task, error) {
@@ -26,20 +39,21 @@ func (sup *Stackup) createTasks(cmd *Command, clients []Client, env string) ([]*
 		return nil, errors.Wrap(err, "resolving CWD failed")
 	}
 
-	// Anything to upload?
 	for _, upload := range cmd.Upload {
 		uploadFile, err := ResolveLocalPath(cwd, upload.Src, env)
 		if err != nil {
-			return nil, errors.Wrap(err, "upload: "+upload.Src)
+			return nil, errors.Wrap(err, "upload src: "+upload.Src)
+		}
+
+		uploadDst, err := ResolveLocalPath(cwd, upload.Dst, env)
+		if err != nil {
+			return nil, errors.Wrap(err, "upload dst: "+upload.Dst)
 		}
 
 		tarBaseDir := "."
 		tarTarget := uploadFile
 
 		if upload.Flatten {
-			// If flatten is true, we change directory to the file's parent
-			// and archive only the filename.
-			// e.g. "./bin/squeed" -> BaseDir: "./bin", Target: "squeed"
 			tarBaseDir = filepath.Dir(uploadFile)
 			tarTarget = filepath.Base(uploadFile)
 		}
@@ -49,9 +63,20 @@ func (sup *Stackup) createTasks(cmd *Command, clients []Client, env string) ([]*
 			return nil, errors.Wrap(err, "upload: "+upload.Src)
 		}
 
+		bar := pb.New64(0)
+		bar.Set(pb.Bytes, true)
+		bar.Set("prefix", fmt.Sprintf("Uploading %s: ", uploadFile))
+		bar.SetTemplateString(`{{string . "prefix"}}{{counters . }} {{speed . }}`)
+		bar.Start()
+
+		proxyReader := &finishReader{
+			Reader: bar.NewProxyReader(uploadTarReader),
+			bar:    bar,
+		}
+
 		task := Task{
-			Run:   RemoteTarCommand(upload.Dst),
-			Input: uploadTarReader,
+			Run:   RemoteTarCommand(uploadDst, upload.Sudo),
+			Input: proxyReader,
 			TTY:   false,
 		}
 
@@ -59,7 +84,6 @@ func (sup *Stackup) createTasks(cmd *Command, clients []Client, env string) ([]*
 			task.Clients = []Client{clients[0]}
 			tasks = append(tasks, &task)
 		} else if cmd.Serial > 0 {
-			// Each "serial" task client group is executed sequentially.
 			for i := 0; i < len(clients); i += cmd.Serial {
 				j := i + cmd.Serial
 				if j > len(clients) {
@@ -75,7 +99,6 @@ func (sup *Stackup) createTasks(cmd *Command, clients []Client, env string) ([]*
 		}
 	}
 
-	// Script. Read the file as a multiline input command.
 	if cmd.Script != "" {
 		f, err := os.Open(cmd.Script)
 		if err != nil {
@@ -100,7 +123,6 @@ func (sup *Stackup) createTasks(cmd *Command, clients []Client, env string) ([]*
 			task.Clients = []Client{clients[0]}
 			tasks = append(tasks, &task)
 		} else if cmd.Serial > 0 {
-			// Each "serial" task client group is executed sequentially.
 			for i := 0; i < len(clients); i += cmd.Serial {
 				j := i + cmd.Serial
 				if j > len(clients) {
@@ -116,7 +138,6 @@ func (sup *Stackup) createTasks(cmd *Command, clients []Client, env string) ([]*
 		}
 	}
 
-	// Local command.
 	if cmd.Local != "" {
 		local := &LocalhostClient{
 			env: env + `export SUP_HOST="localhost";`,
@@ -136,7 +157,6 @@ func (sup *Stackup) createTasks(cmd *Command, clients []Client, env string) ([]*
 		tasks = append(tasks, task)
 	}
 
-	// Remote command.
 	if cmd.Run != "" {
 		task := Task{
 			Run: cmd.Run,
@@ -152,7 +172,6 @@ func (sup *Stackup) createTasks(cmd *Command, clients []Client, env string) ([]*
 			task.Clients = []Client{clients[0]}
 			tasks = append(tasks, &task)
 		} else if cmd.Serial > 0 {
-			// Each "serial" task client group is executed sequentially.
 			for i := 0; i < len(clients); i += cmd.Serial {
 				j := i + cmd.Serial
 				if j > len(clients) {

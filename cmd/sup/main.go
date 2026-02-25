@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"os/user"
-	"path/filepath"
 	"regexp"
 	"strings"
 	"text/tabwriter"
@@ -208,19 +206,6 @@ func parseArgs(conf *sup.Supfile) (*sup.Network, []*sup.Command, error) {
 	return &network, commands, nil
 }
 
-func resolvePath(path string) string {
-	if path == "" {
-		return ""
-	}
-	if path[:2] == "~/" {
-		usr, err := user.Current()
-		if err == nil {
-			path = filepath.Join(usr.HomeDir, path[2:])
-		}
-	}
-	return path
-}
-
 func main() {
 	flag.Parse()
 
@@ -238,7 +223,7 @@ func main() {
 	if supfile == "" {
 		supfile = "./Supfile"
 	}
-	data, err := ioutil.ReadFile(resolvePath(supfile))
+	data, err := os.ReadFile(sup.ResolvePath(supfile))
 	if err != nil {
 		firstErr := err
 		data, err = ioutil.ReadFile("./Supfile.yml") // Alternative to ./Supfile.
@@ -305,7 +290,7 @@ func main() {
 
 	// --sshconfig flag location for ssh_config file
 	if sshConfig != "" {
-		confHosts, err := sshconfig.ParseSSHConfig(resolvePath(sshConfig))
+		confHosts, err := sshconfig.Parse(sup.ResolvePath(sshConfig))
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
@@ -320,15 +305,19 @@ func main() {
 			}
 		}
 
-		// check network.Hosts for match
+		// check network.Hosts for match and expand them
+		var newHosts []string
 		for _, host := range network.Hosts {
 			conf, found := confMap[host]
 			if found {
+				newHosts = append(newHosts, fmt.Sprintf("%s:%d", conf.HostName, conf.Port))
 				network.User = conf.User
-				network.IdentityFile = resolvePath(conf.IdentityFile)
-				network.Hosts = []string{fmt.Sprintf("%s:%d", conf.HostName, conf.Port)}
+				network.IdentityFile = sup.ResolvePath(conf.IdentityFile)
+			} else {
+				newHosts = append(newHosts, host)
 			}
 		}
+		network.Hosts = newHosts
 	}
 
 	var vars sup.EnvList

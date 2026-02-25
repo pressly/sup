@@ -13,7 +13,7 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
-const VERSION = "0.5.1"
+const VERSION = "0.5.2"
 
 type Stackup struct {
 	conf   *Supfile
@@ -42,7 +42,8 @@ func (sup *Stackup) Run(network *Network, envVars EnvList, commands ...*Command)
 	var bastion *SSHClient
 	if network.Bastion != "" {
 		bastion = &SSHClient{
-			password: network.Password,
+			password:     network.Password,
+			identityFile: ResolvePath(network.IdentityFile),
 		}
 		if err := bastion.Connect(network.Bastion); err != nil {
 			return errors.Wrap(err, "connecting to bastion failed")
@@ -73,10 +74,11 @@ func (sup *Stackup) Run(network *Network, envVars EnvList, commands ...*Command)
 
 			// SSH client.
 			remote := &SSHClient{
-				env:      env + `export SUP_HOST="` + host + `";`,
-				user:     network.User,
-				color:    Colors[i%len(Colors)],
-				password: network.Password,
+				env:          env + `export SUP_HOST="` + host + `";`,
+				user:         network.User,
+				color:        Colors[i%len(Colors)],
+				password:     network.Password,
+				identityFile: ResolvePath(network.IdentityFile),
 			}
 
 			if bastion != nil {

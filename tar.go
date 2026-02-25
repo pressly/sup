@@ -15,8 +15,12 @@ import (
 // RemoteTarCommand returns command to be run on remote SSH host
 // to properly receive the created TAR stream.
 // TODO: Check for relative directory.
-func RemoteTarCommand(dir string) string {
-	return fmt.Sprintf("tar -C \"%s\" -xzf -", dir)
+func RemoteTarCommand(dir string, useSudo bool) string {
+	cmd := fmt.Sprintf("tar -C \"%s\" -xzf -", dir)
+	if useSudo {
+		return "sudo " + cmd
+	}
+	return cmd
 }
 
 func LocalTarCmdArgs(basedir, path, exclude string) []string {

@@ -1,9 +1,9 @@
 package sup
 
 import (
+	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net"
 	"os"
 	"os/user"
@@ -31,9 +31,9 @@ type SSHClient struct {
 	env          string //export FOO="bar"; export BAR="baz";
 	color        string
 
-	ask      bool   // For interactive "ask:root@..."
-	password string // For config "password: ..."
-
+	ask          bool   // For interactive "ask:root@..."
+	password     string // For config "password: ..."
+	identityFile string
 }
 
 type ErrConnect struct {
@@ -111,7 +111,7 @@ func initAuthMethod() {
 		if strings.HasSuffix(file, ".pub") {
 			continue // Skip public keys.
 		}
-		data, err := ioutil.ReadFile(file)
+		data, err := os.ReadFile(file)
 		if err != nil {
 			continue
 		}
@@ -144,38 +144,54 @@ func (c *SSHClient) ConnectWith(host string, dialer SSHDialFunc) error {
 
 	initAuthMethodOnce.Do(initAuthMethod)
 
-	err := c.parseHost(host)
-	if err != nil {
+	if err := c.parseHost(host); err != nil {
 		return err
 	}
 
-	// 1. Start with Public Keys (SSH Agent + ~/.ssh/id_rsa)
 	auths := []ssh.AuthMethod{
 		authMethod,
 	}
 
-	// 2. If a password was provided in Supfile, add it to the list
+	if c.identityFile != "" {
+		resolvedPath := ResolvePath(c.identityFile)
+		key, err := os.ReadFile(resolvedPath)
+		if err != nil {
+			return ErrConnect{c.user, c.host, fmt.Sprintf("reading private key %s: %v", c.identityFile, err)}
+		}
+
+		signer, err := ssh.ParsePrivateKey(key)
+		if err != nil {
+			var passphraseMissingError *ssh.PassphraseMissingError
+			if errors.As(err, &passphraseMissingError) {
+				return ErrConnect{c.user, c.host, fmt.Sprintf("private key %s is encrypted with passphrase (not supported)", c.identityFile)}
+			}
+			return ErrConnect{c.user, c.host, fmt.Sprintf("parsing private key %s: %v", c.identityFile, err)}
+		}
+
+		auths = append([]ssh.AuthMethod{ssh.PublicKeys(signer)}, auths...)
+	}
+
 	if c.password != "" {
 		auths = append(auths, ssh.Password(c.password))
 	}
 
-	// 3. If the user requested an interactive prompt (ask:user@host), ask now
 	if c.ask {
 		fmt.Printf("Enter Password for %s@%s: ", c.user, c.host)
 		pass, err := terminal.ReadPassword(int(os.Stdin.Fd()))
 		if err != nil {
 			return err
 		}
-		fmt.Println("") // Print newline after input
+		fmt.Println()
 		auths = append(auths, ssh.Password(string(pass)))
 	}
 
 	config := &ssh.ClientConfig{
 		User:            c.user,
-		Auth:            auths, // Use the combined list of auth methods
+		Auth:            auths,
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 	}
 
+	var err error
 	c.conn, err = dialer("tcp", c.host, config)
 	if err != nil {
 		return ErrConnect{c.user, c.host, err.Error()}
