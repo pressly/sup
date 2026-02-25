@@ -1,9 +1,9 @@
 package sup
 
 import (
+	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net"
 	"os"
 	"os/user"
@@ -13,6 +13,7 @@ import (
 
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/agent"
+	"golang.org/x/crypto/ssh/terminal"
 )
 
 // Client is a wrapper over the SSH connection/sessions.
@@ -29,6 +30,10 @@ type SSHClient struct {
 	running      bool
 	env          string //export FOO="bar"; export BAR="baz";
 	color        string
+
+	ask          bool   // For interactive "ask:root@..."
+	password     string // For config "password: ..."
+	identityFile string
 }
 
 type ErrConnect struct {
@@ -54,6 +59,15 @@ func (c *SSHClient) parseHost(host string) error {
 	if at := strings.LastIndex(c.host, "@"); at != -1 {
 		c.user = c.host[:at]
 		c.host = c.host[at+1:]
+
+		// Check if the username starts with "ask:"
+		c.ask = false
+		if after, ok := strings.CutPrefix(c.user, "ask:"); ok {
+			// Remove "ask:" from the username
+			c.user = after
+			// Set the flag so ConnectWith knows to prompt
+			c.ask = true
+		}
 	}
 
 	// Add default user, if not set
@@ -97,7 +111,7 @@ func initAuthMethod() {
 		if strings.HasSuffix(file, ".pub") {
 			continue // Skip public keys.
 		}
-		data, err := ioutil.ReadFile(file)
+		data, err := os.ReadFile(file)
 		if err != nil {
 			continue
 		}
@@ -130,19 +144,54 @@ func (c *SSHClient) ConnectWith(host string, dialer SSHDialFunc) error {
 
 	initAuthMethodOnce.Do(initAuthMethod)
 
-	err := c.parseHost(host)
-	if err != nil {
+	if err := c.parseHost(host); err != nil {
 		return err
 	}
 
+	auths := []ssh.AuthMethod{
+		authMethod,
+	}
+
+	if c.identityFile != "" {
+		resolvedPath := ResolvePath(c.identityFile)
+		key, err := os.ReadFile(resolvedPath)
+		if err != nil {
+			return ErrConnect{c.user, c.host, fmt.Sprintf("reading private key %s: %v", c.identityFile, err)}
+		}
+
+		signer, err := ssh.ParsePrivateKey(key)
+		if err != nil {
+			var passphraseMissingError *ssh.PassphraseMissingError
+			if errors.As(err, &passphraseMissingError) {
+				return ErrConnect{c.user, c.host, fmt.Sprintf("private key %s is encrypted with passphrase (not supported)", c.identityFile)}
+			}
+			return ErrConnect{c.user, c.host, fmt.Sprintf("parsing private key %s: %v", c.identityFile, err)}
+		}
+
+		auths = append([]ssh.AuthMethod{ssh.PublicKeys(signer)}, auths...)
+	}
+
+	if c.password != "" {
+		auths = append(auths, ssh.Password(c.password))
+	}
+
+	if c.ask {
+		fmt.Printf("Enter Password for %s@%s: ", c.user, c.host)
+		pass, err := terminal.ReadPassword(int(os.Stdin.Fd()))
+		if err != nil {
+			return err
+		}
+		fmt.Println()
+		auths = append(auths, ssh.Password(string(pass)))
+	}
+
 	config := &ssh.ClientConfig{
-		User: c.user,
-		Auth: []ssh.AuthMethod{
-			authMethod,
-		},
+		User:            c.user,
+		Auth:            auths,
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 	}
 
+	var err error
 	c.conn, err = dialer("tcp", c.host, config)
 	if err != nil {
 		return ErrConnect{c.user, c.host, err.Error()}
@@ -155,10 +204,10 @@ func (c *SSHClient) ConnectWith(host string, dialer SSHDialFunc) error {
 // Run runs the task.Run command remotely on c.host.
 func (c *SSHClient) Run(task *Task) error {
 	if c.running {
-		return fmt.Errorf("Session already running")
+		return fmt.Errorf("session already running")
 	}
 	if c.sessOpened {
-		return fmt.Errorf("Session already connected")
+		return fmt.Errorf("session already connected")
 	}
 
 	sess, err := c.conn.NewSession()
@@ -241,7 +290,7 @@ func (c *SSHClient) Close() error {
 		c.sessOpened = false
 	}
 	if !c.connOpened {
-		return fmt.Errorf("Trying to close the already closed connection")
+		return fmt.Errorf("trying to close the already closed connection")
 	}
 
 	err := c.conn.Close()

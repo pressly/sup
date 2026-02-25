@@ -1,2 +1,6 @@
 bin/
 *.sw?
+tmp
+lab
+dist
+example

@@ -9,11 +9,9 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-
 	"gopkg.in/yaml.v2"
 )
 
-// Supfile represents the Stack Up configuration YAML file.
 type Supfile struct {
 	Networks Networks `yaml:"networks"`
 	Commands Commands `yaml:"commands"`
@@ -22,25 +20,22 @@ type Supfile struct {
 	Version  string   `yaml:"version"`
 }
 
-// Network is group of hosts with extra custom env vars.
 type Network struct {
-	Env       EnvList  `yaml:"env"`
-	Inventory string   `yaml:"inventory"`
-	Hosts     []string `yaml:"hosts"`
-	Bastion   string   `yaml:"bastion"` // Jump host for the environment
-
-	// Should these live on Hosts too? We'd have to change []string to struct, even in Supfile.
-	User         string // `yaml:"user"`
-	IdentityFile string // `yaml:"identity_file"`
+	Env          EnvList  `yaml:"env"`
+	Inventory    string   `yaml:"inventory"`
+	Hosts        []string `yaml:"hosts"`
+	Bastion      string   `yaml:"bastion"`
+	Password     string   `yaml:"password"`
+	User         string   `yaml:"user"`
+	IdentityFile string   `yaml:"identity_file"`
 }
 
-// Networks is a list of user-defined networks
 type Networks struct {
 	Names []string
 	nets  map[string]Network
 }
 
-func (n *Networks) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (n *Networks) UnmarshalYAML(unmarshal func(any) error) error {
 	err := unmarshal(&n.nets)
 	if err != nil {
 		return err
@@ -65,29 +60,26 @@ func (n *Networks) Get(name string) (Network, bool) {
 	return net, ok
 }
 
-// Command represents command(s) to be run remotely.
 type Command struct {
-	Name   string   `yaml:"-"`      // Command name.
-	Desc   string   `yaml:"desc"`   // Command description.
-	Local  string   `yaml:"local"`  // Command(s) to be run locally.
-	Run    string   `yaml:"run"`    // Command(s) to be run remotelly.
-	Script string   `yaml:"script"` // Load command(s) from script and run it remotelly.
-	Upload []Upload `yaml:"upload"` // See Upload struct.
-	Stdin  bool     `yaml:"stdin"`  // Attach localhost STDOUT to remote commands' STDIN?
-	Once   bool     `yaml:"once"`   // The command should be run "once" (on one host only).
-	Serial int      `yaml:"serial"` // Max number of clients processing a task in parallel.
+	Name   string   `yaml:"-"`
+	Desc   string   `yaml:"desc"`
+	Local  string   `yaml:"local"`
+	Run    string   `yaml:"run"`
+	Script string   `yaml:"script"`
+	Upload []Upload `yaml:"upload"`
+	Stdin  bool     `yaml:"stdin"`
+	Once   bool     `yaml:"once"`
+	Serial int      `yaml:"serial"`
 
-	// API backward compatibility. Will be deprecated in v1.0.
-	RunOnce bool `yaml:"run_once"` // The command should be run once only.
+	RunOnce bool `yaml:"run_once"`
 }
 
-// Commands is a list of user-defined commands
 type Commands struct {
 	Names []string
 	cmds  map[string]Command
 }
 
-func (c *Commands) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (c *Commands) UnmarshalYAML(unmarshal func(any) error) error {
 	err := unmarshal(&c.cmds)
 	if err != nil {
 		return err
@@ -112,13 +104,12 @@ func (c *Commands) Get(name string) (Command, bool) {
 	return cmd, ok
 }
 
-// Targets is a list of user-defined targets
 type Targets struct {
 	Names   []string
 	targets map[string][]string
 }
 
-func (t *Targets) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (t *Targets) UnmarshalYAML(unmarshal func(any) error) error {
 	err := unmarshal(&t.targets)
 	if err != nil {
 		return err
@@ -143,15 +134,14 @@ func (t *Targets) Get(name string) ([]string, bool) {
 	return cmds, ok
 }
 
-// Upload represents file copy operation from localhost Src path to Dst
-// path of every host in a given Network.
 type Upload struct {
-	Src string `yaml:"src"`
-	Dst string `yaml:"dst"`
-	Exc string `yaml:"exclude"`
+	Src     string `yaml:"src"`
+	Dst     string `yaml:"dst"`
+	Exc     string `yaml:"exclude"`
+	Flatten bool   `yaml:"flatten"`
+	Sudo    bool   `yaml:"sudo"`
 }
 
-// EnvVar represents an environment variable
 type EnvVar struct {
 	Key   string
 	Value string
@@ -161,13 +151,10 @@ func (e EnvVar) String() string {
 	return e.Key + `=` + e.Value
 }
 
-// AsExport returns the environment variable as a bash export statement
 func (e EnvVar) AsExport() string {
 	return `export ` + e.Key + `="` + e.Value + `";`
 }
 
-// EnvList is a list of environment variables that maps to a YAML map,
-// but maintains order, enabling late variables to reference early variables.
 type EnvList []*EnvVar
 
 func (e EnvList) Slice() []string {
@@ -178,7 +165,7 @@ func (e EnvList) Slice() []string {
 	return envs
 }
 
-func (e *EnvList) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (e *EnvList) UnmarshalYAML(unmarshal func(any) error) error {
 	items := []yaml.MapItem{}
 
 	err := unmarshal(&items)
@@ -195,7 +182,6 @@ func (e *EnvList) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	return nil
 }
 
-// Set key to be equal value in this list.
 func (e *EnvList) Set(key, value string) {
 	for i, v := range *e {
 		if v.Key == key {
@@ -215,11 +201,11 @@ func (e *EnvList) ResolveValues() error {
 		return nil
 	}
 
-	exports := ""
+	var exports strings.Builder
 	for i, v := range *e {
-		exports += v.AsExport()
+		exports.WriteString(v.AsExport())
 
-		cmd := exec.Command("bash", "-c", exports+"echo -n "+v.Value+";")
+		cmd := exec.Command("bash", "-c", exports.String()+"echo -n "+v.Value+";")
 		cwd, err := os.Getwd()
 		if err != nil {
 			return err
@@ -237,13 +223,11 @@ func (e *EnvList) ResolveValues() error {
 }
 
 func (e *EnvList) AsExport() string {
-	// Process all ENVs into a string of form
-	// `export FOO="bar"; export BAR="baz";`.
-	exports := ``
+	var exports strings.Builder
 	for _, v := range *e {
-		exports += v.AsExport() + " "
+		exports.WriteString(v.AsExport() + " ")
 	}
-	return exports
+	return exports.String()
 }
 
 type ErrMustUpdate struct {
@@ -262,7 +246,6 @@ func (e ErrUnsupportedSupfileVersion) Error() string {
 	return fmt.Sprintf("%v\n\nCheck your Supfile version (available latest version: v0.5)", e.Msg)
 }
 
-// NewSupfile parses configuration file and returns Supfile or error.
 func NewSupfile(data []byte) (*Supfile, error) {
 	var conf Supfile
 
@@ -270,7 +253,6 @@ func NewSupfile(data []byte) (*Supfile, error) {
 		return nil, err
 	}
 
-	// API backward compatibility. Will be deprecated in v1.0.
 	switch conf.Version {
 	case "":
 		conf.Version = "0.1"
@@ -318,8 +300,7 @@ func NewSupfile(data []byte) (*Supfile, error) {
 
 		fallthrough
 
-	case "0.4", "0.5":
-
+	case "0.4", "0.5", "0.5.1", "0.5.2":
 	default:
 		return nil, ErrUnsupportedSupfileVersion{"unsupported Supfile version " + conf.Version}
 	}
@@ -327,8 +308,6 @@ func NewSupfile(data []byte) (*Supfile, error) {
 	return &conf, nil
 }
 
-// ParseInventory runs the inventory command, if provided, and appends
-// the command's output lines to the manually defined list of hosts.
 func (n Network) ParseInventory() ([]string, error) {
 	if n.Inventory == "" {
 		return nil, nil
@@ -355,7 +334,6 @@ func (n Network) ParseInventory() ([]string, error) {
 		}
 
 		host = strings.TrimSpace(host)
-		// skip empty lines and comments
 		if host == "" || host[:1] == "#" {
 			continue
 		}

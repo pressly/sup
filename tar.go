@@ -15,30 +15,34 @@ import (
 // RemoteTarCommand returns command to be run on remote SSH host
 // to properly receive the created TAR stream.
 // TODO: Check for relative directory.
-func RemoteTarCommand(dir string) string {
-	return fmt.Sprintf("tar -C \"%s\" -xzf -", dir)
+func RemoteTarCommand(dir string, useSudo bool) string {
+	cmd := fmt.Sprintf("tar --warning=no-unknown-keyword -C \"%s\" -xzf -", dir)
+	if useSudo {
+		return "sudo " + cmd
+	}
+	return cmd
 }
 
-func LocalTarCmdArgs(path, exclude string) []string {
-	args := []string{}
+func LocalTarCmdArgs(basedir, path, exclude string) []string {
+	var args []string
 
 	// Added pattens to exclude from tar compress
-	excludes := strings.Split(exclude, ",")
-	for _, exclude := range excludes {
+	excludes := strings.SplitSeq(exclude, ",")
+	for exclude := range excludes {
 		trimmed := strings.TrimSpace(exclude)
 		if trimmed != "" {
 			args = append(args, `--exclude=`+trimmed)
 		}
 	}
 
-	args = append(args, "-C", ".", "-czf", "-", path)
+	args = append(args, "-C", basedir, "-czf", "-", path)
 	return args
 }
 
 // NewTarStreamReader creates a tar stream reader from a local path.
 // TODO: Refactor. Use "archive/tar" instead.
-func NewTarStreamReader(cwd, path, exclude string) (io.Reader, error) {
-	cmd := exec.Command("tar", LocalTarCmdArgs(path, exclude)...)
+func NewTarStreamReader(cwd, basedir, path, exclude string) (io.Reader, error) {
+	cmd := exec.Command("tar", LocalTarCmdArgs(basedir, path, exclude)...)
 	cmd.Dir = cwd
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {

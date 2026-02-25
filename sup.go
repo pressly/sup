@@ -13,7 +13,7 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
-const VERSION = "0.5"
+const VERSION = "0.5.2"
 
 type Stackup struct {
 	conf   *Supfile
@@ -29,7 +29,8 @@ func New(conf *Supfile) (*Stackup, error) {
 
 // Run runs set of commands on multiple hosts defined by network sequentially.
 // TODO: This megamoth method needs a big refactor and should be split
-//       to multiple smaller methods.
+//
+//	to multiple smaller methods.
 func (sup *Stackup) Run(network *Network, envVars EnvList, commands ...*Command) error {
 	if len(commands) == 0 {
 		return errors.New("no commands to be run")
@@ -40,7 +41,10 @@ func (sup *Stackup) Run(network *Network, envVars EnvList, commands ...*Command)
 	// Create clients for every host (either SSH or Localhost).
 	var bastion *SSHClient
 	if network.Bastion != "" {
-		bastion = &SSHClient{}
+		bastion = &SSHClient{
+			password:     network.Password,
+			identityFile: ResolvePath(network.IdentityFile),
+		}
 		if err := bastion.Connect(network.Bastion); err != nil {
 			return errors.Wrap(err, "connecting to bastion failed")
 		}
@@ -70,9 +74,11 @@ func (sup *Stackup) Run(network *Network, envVars EnvList, commands ...*Command)
 
 			// SSH client.
 			remote := &SSHClient{
-				env:   env + `export SUP_HOST="` + host + `";`,
-				user:  network.User,
-				color: Colors[i%len(Colors)],
+				env:          env + `export SUP_HOST="` + host + `";`,
+				user:         network.User,
+				color:        Colors[i%len(Colors)],
+				password:     network.Password,
+				identityFile: ResolvePath(network.IdentityFile),
 			}
 
 			if bastion != nil {

@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"os/user"
-	"path/filepath"
 	"regexp"
 	"strings"
 	"text/tabwriter"
@@ -127,14 +125,14 @@ func parseArgs(conf *sup.Supfile) (*sup.Network, []*sup.Command, error) {
 		if len(env) == 0 {
 			continue
 		}
-		i := strings.Index(env, "=")
-		if i < 0 {
+		before, after, ok0 := strings.Cut(env, "=")
+		if !ok0 {
 			if len(env) > 0 {
 				network.Env.Set(env, "")
 			}
 			continue
 		}
-		network.Env.Set(env[:i], env[i+1:])
+		network.Env.Set(before, after)
 	}
 
 	hosts, err := network.ParseInventory()
@@ -208,19 +206,6 @@ func parseArgs(conf *sup.Supfile) (*sup.Network, []*sup.Command, error) {
 	return &network, commands, nil
 }
 
-func resolvePath(path string) string {
-	if path == "" {
-		return ""
-	}
-	if path[:2] == "~/" {
-		usr, err := user.Current()
-		if err == nil {
-			path = filepath.Join(usr.HomeDir, path[2:])
-		}
-	}
-	return path
-}
-
 func main() {
 	flag.Parse()
 
@@ -238,7 +223,7 @@ func main() {
 	if supfile == "" {
 		supfile = "./Supfile"
 	}
-	data, err := ioutil.ReadFile(resolvePath(supfile))
+	data, err := os.ReadFile(sup.ResolvePath(supfile))
 	if err != nil {
 		firstErr := err
 		data, err = ioutil.ReadFile("./Supfile.yml") // Alternative to ./Supfile.
@@ -305,7 +290,7 @@ func main() {
 
 	// --sshconfig flag location for ssh_config file
 	if sshConfig != "" {
-		confHosts, err := sshconfig.ParseSSHConfig(resolvePath(sshConfig))
+		confHosts, err := sshconfig.Parse(sup.ResolvePath(sshConfig))
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
@@ -320,15 +305,19 @@ func main() {
 			}
 		}
 
-		// check network.Hosts for match
+		// check network.Hosts for match and expand them
+		var newHosts []string
 		for _, host := range network.Hosts {
 			conf, found := confMap[host]
 			if found {
+				newHosts = append(newHosts, fmt.Sprintf("%s:%d", conf.HostName, conf.Port))
 				network.User = conf.User
-				network.IdentityFile = resolvePath(conf.IdentityFile)
-				network.Hosts = []string{fmt.Sprintf("%s:%d", conf.HostName, conf.Port)}
+				network.IdentityFile = sup.ResolvePath(conf.IdentityFile)
+			} else {
+				newHosts = append(newHosts, host)
 			}
 		}
+		network.Hosts = newHosts
 	}
 
 	var vars sup.EnvList
@@ -346,24 +335,24 @@ func main() {
 		if len(env) == 0 {
 			continue
 		}
-		i := strings.Index(env, "=")
-		if i < 0 {
+		before, after, ok := strings.Cut(env, "=")
+		if !ok {
 			if len(env) > 0 {
 				vars.Set(env, "")
 			}
 			continue
 		}
-		vars.Set(env[:i], env[i+1:])
-		cliVars.Set(env[:i], env[i+1:])
+		vars.Set(before, after)
+		cliVars.Set(before, after)
 	}
 
 	// SUP_ENV is generated only from CLI env vars.
 	// Separate loop to omit duplicates.
-	supEnv := ""
+	var supEnv strings.Builder
 	for _, v := range cliVars {
-		supEnv += fmt.Sprintf(" -e %v=%q", v.Key, v.Value)
+		supEnv.WriteString(fmt.Sprintf(" -e %v=%q", v.Key, v.Value))
 	}
-	vars.Set("SUP_ENV", strings.TrimSpace(supEnv))
+	vars.Set("SUP_ENV", strings.TrimSpace(supEnv.String()))
 
 	// Create new Stackup app.
 	app, err := sup.New(conf)
